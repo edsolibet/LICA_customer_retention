@@ -10,7 +10,7 @@ import sys
 import subprocess
 import pkg_resources
 
-required = {'pandas', 'numpy', 'lifetimes', 'matplotlib', 'seaborn', 'statsmodels', 'datetime', 'joblib'}
+required = {'pandas', 'numpy', 'lifetimes', 'matplotlib', 'seaborn', 'statsmodels', 'datetime', 'joblib', 'streamlit'}
 installed = {pkg.key for pkg in pkg_resources.working_set}
 missing = required - installed
 
@@ -71,6 +71,7 @@ def get_data():
     all_data.loc[:,'date'] = pd.to_datetime(all_data.loc[:,'date'])
     # rename columns
     all_data = all_data.rename(columns={'year': 'model_year', 'name':'status'})
+    all_data.loc[:,'model_year'] = all_data.loc[:,'model_year'].fillna(0).astype(int)
     all_data.loc[:,'month'] = all_data.apply(lambda x: x['date'].month, 1)
     all_data.loc[:,'year'] = all_data.apply(lambda x: x['date'].year, 1)
     # remove cancelled transactions
@@ -115,14 +116,38 @@ def cohort_analysis(df):
     # pivot table to calculate amount of unique customers in each cohort based on 
     # purchase distance from first month of purchase
     # filter out first two months
-    cohort_dates = headers[:]
+    cohort_dates = headers[2:]
     filtered_dates = df_data[df_data['first_cohort'].isin(cohort_dates)]
     cohort_pivot = pd.pivot_table(filtered_dates, index='first_cohort', columns='cohort_distance', values='full_name', aggfunc=pd.Series.nunique)
     # divide each row by the first column
     cohort_pivot = cohort_pivot.div(cohort_pivot[0],axis=0)
+    
+    # plot heatmap of cohort retention rate
+    fig_dims = (16, 16)
+    fig, ax = plt.subplots(figsize=fig_dims)
+    #ax.set(xlabel='Months After First Purchase', ylabel='First Purchase Cohort', title="Cohort Analysis")
+    y_labels = [str(int(head)%100) + '-' + str(int(head)/100) for head in cohort_dates]
+    x_labels = range(0, len(y_labels))
+    plt.yticks(ticks=cohort_dates, labels=y_labels, fontsize=15, rotation=90)
+    plt.xticks(x_labels, x_labels, fontsize=15)
+    # adjusted scale for colorbar via vmin/vmax
+    cohort_chart = sns.heatmap(cohort_pivot, annot=True, fmt='.1%', mask=cohort_pivot.isnull(), 
+                square=True, linewidths=.5, cmap=sns.cubehelix_palette(8), annot_kws={"fontsize":15},
+                vmin=0, vmax=0.1)
+    plt.xlabel('Months After First Purchase', size=18)
+    plt.ylabel('First Purchase Cohort', size=18)
+    plt.title('Cohort Analysis')
+    plt.tight_layout()
+    plt.show()
+    st.pyplot(cohort_chart)
+    
+    return cohort_pivot
 
 if __name__ == '__main__':
     # import data and preparation
     df_data = get_data()
+    # show dataframe in streamlit
     st.dataframe(df_data)
+    # plot cohort_retention_chart
+    cohort_pivot = cohort_analysis(df_data)
     
