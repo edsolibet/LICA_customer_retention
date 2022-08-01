@@ -123,15 +123,14 @@ def cohort_analysis(df):
     cohort_pivot = cohort_pivot.div(cohort_pivot[0],axis=0)
     
     # plot heatmap of cohort retention rate
-    fig_dims = (16, 16)
-    fig, ax = plt.subplots(figsize=fig_dims)
+    fig, ax = plt.subplots()
     #ax.set(xlabel='Months After First Purchase', ylabel='First Purchase Cohort', title="Cohort Analysis")
     y_labels = [str(int(head)%100) + '-' + str(int(head)/100) for head in cohort_dates]
     x_labels = range(0, len(y_labels))
     plt.yticks(ticks=cohort_dates, labels=y_labels, fontsize=15, rotation=90)
     plt.xticks(x_labels, x_labels, fontsize=15)
     # adjusted scale for colorbar via vmin/vmax
-    cohort_chart = sns.heatmap(cohort_pivot, annot=True, fmt='.1%', mask=cohort_pivot.isnull(), 
+    ax = sns.heatmap(cohort_pivot, annot=True, fmt='.1%', mask=cohort_pivot.isnull(), 
                 square=True, linewidths=.5, cmap=sns.cubehelix_palette(8), annot_kws={"fontsize":15},
                 vmin=0, vmax=0.1)
     plt.xlabel('Months After First Purchase', size=18)
@@ -139,7 +138,7 @@ def cohort_analysis(df):
     plt.title('Cohort Analysis')
     plt.tight_layout()
     plt.show()
-    st.pyplot(cohort_chart)
+    st.pyplot(fig)
     
     return cohort_pivot
 
@@ -147,7 +146,9 @@ if __name__ == '__main__':
     # import data and preparation
     df_data = get_data()
     # show dataframe in streamlit
+    st.write('Customer transaction data in MechaniGO.ph')
     st.dataframe(df_data)
     # plot cohort_retention_chart
+    st.write('This chart shows the retention for customers of various cohorts (grouped by first month of transaction).')
     cohort_pivot = cohort_analysis(df_data)
     
