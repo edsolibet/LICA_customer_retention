@@ -123,7 +123,8 @@ def cohort_analysis(df):
     cohort_pivot = cohort_pivot.div(cohort_pivot[0],axis=0)
     
     # plot heatmap of cohort retention rate
-    fig, ax = plt.subplots()
+    fig_dims = (16, 16)
+    fig, ax = plt.subplots(figsize=fig_dims)
     #ax.set(xlabel='Months After First Purchase', ylabel='First Purchase Cohort', title="Cohort Analysis")
     y_labels = [str(int(head)%100) + '-' + str(int(head)/100) for head in cohort_dates]
     x_labels = range(0, len(y_labels))
@@ -149,6 +150,9 @@ if __name__ == '__main__':
     st.write('Customer transaction data in MechaniGO.ph')
     st.dataframe(df_data)
     # plot cohort_retention_chart
-    st.write('This chart shows the retention for customers of various cohorts (grouped by first month of transaction).')
+    st.write('''This chart shows the retention for customers of various cohorts
+             (grouped by first month of transaction). The data shows the percentage 
+             of customers in that cohort that are retained months after their initial 
+             purchase.''')
     cohort_pivot = cohort_analysis(df_data)
     
