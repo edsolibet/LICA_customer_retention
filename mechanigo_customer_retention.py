@@ -49,7 +49,11 @@ def fix_name(name):
       name_list.append(n)
   return ' '.join(name_list).strip()
 
-
+def get_ratio(a, b):
+  try:
+    return a/b
+  except:
+    return 999
 
 def get_data():
     
@@ -143,6 +147,105 @@ def cohort_analysis(df):
     
     return cohort_pivot
 
+def cohort_rfm(df):
+    '''
+    
+
+    Parameters
+    ----------
+    df : dataframe
+        Prepared customer transaction dataframe
+
+    Returns
+    -------
+    df_cohort : dataframe
+        Customer dataframe with extracted RFM features
+
+    '''
+    df_cohort = df.groupby('full_name').agg(
+                                       cohort=('date', lambda x: x.min().year*100 + x.min().month),
+                                       recency=('date', lambda x: (x.max() - x.min()).days),
+                                       frequency=('id', lambda x: len(x) - 1),
+                                       total_sales=('total_cost', lambda x: np.sum(x)),
+                                       T = ('date', lambda x: (datetime.today()-x.min()).days + 1),
+                                       year=('date', lambda x: x.min().year),
+                                       month=('date', lambda x: x.min().month),
+                                       )
+    df_cohort.columns = ['cohort', 'recency', 'frequency', 'total_sales', 'T', 'year', 'month']
+    df_cohort.loc[:,'avg_days_between_purchase'] = df_cohort.apply(lambda row: get_ratio(row['recency'], row['frequency']), axis=1)
+    df_cohort = df_cohort.fillna(0)
+    # filter data by returning customers
+    df_cohort = df_cohort[df_cohort['total_sales'] > 0]
+    
+    return df_cohort
+
+def customer_lv(df_cohort):
+    '''
+    Calculates customer lifetime value
+
+    Parameters
+    ----------
+    df_cohort : dataframe
+        Cohort rfm data
+
+    Returns
+    -------
+    customer_lv : dataframe
+        Customer lifetime value and its components
+
+    '''
+    
+    monthly_clv, avg_sales, purchase_freq, churn = list(), list(), list(), list()
+
+    # calculate monthly customer lifetime value per cohort
+    for d in sorted(df_cohort['cohort'].unique()):
+      customer_m = df_cohort[df_cohort['cohort']==d]
+      avg_sales.append(round(np.mean(customer_m['total_sales']), 2))
+      purchase_freq.append(round(np.mean(customer_m['frequency']), 2))
+      retention_rate = customer_m[customer_m['frequency']>0].shape[0]/customer_m.shape[0]
+      churn.append(round(1-retention_rate,2))
+      clv = round((avg_sales[-1]*purchase_freq[-1]/churn[-1]), 2)
+      monthly_clv.append(clv)
+    
+    customer_lv = pd.DataFrame({'cohort':sorted(df_cohort['cohort'].unique()), 'clv':monthly_clv, 
+                                 'avg_sales': avg_sales, 'purchase_freq': purchase_freq,
+                                 'churn': churn})
+    # plot monthly clv
+    colors = [['dodgerblue', 'red'],['green', 'orange']]
+    customer_lv_ = customer_lv.iloc[:,:]
+    
+    fig, ax1 = plt.subplots(2,1, figsize=(12, 10))
+    ax1[0].plot(range(len(customer_lv_.cohort)), customer_lv_.clv, '--o', color=colors[0][0]);
+    ax1[0].set_ylim([0, round(customer_lv.clv.max()*1.2)])
+    ax1[0].set_ylabel('customer clv', color=colors[0][0])
+    ax1[0].axhline(y=customer_lv_.clv.mean(), color='black', linestyle='--');
+    # set secondary y-axis
+    ax2 = ax1[0].twinx()
+    ax2.plot(range(len(customer_lv_.cohort)), customer_lv_.churn, '--o', color=colors[0][1])
+    ax2.set_ylim([0.5, 1])
+    ax2.set_ylabel('churn %', color=colors[0][1])
+    # set shared x-label and x-ticks
+    ax2.set_xticks(range(len(customer_lv_.cohort)))
+    ax2.set_xticklabels(customer_lv_.cohort)
+    ax2.set_xlabel('first_cohort');
+    
+    ax1[1].plot(range(len(customer_lv_.cohort)), customer_lv_.avg_sales, '--o', color=colors[1][0]);
+    #ax1[1].set_ylim([0, round(customer_clv.clv.max()*1.2)])
+    ax1[1].set_ylabel('avg sales', color=colors[1][0])
+    # set secondary y-axis
+    ax2 = ax1[1].twinx()
+    ax2.plot(range(len(customer_lv_.cohort)), customer_lv_.purchase_freq, '--o', color=colors[1][1])
+    #ax2.set_ylim([0.5, 1])
+    ax2.set_ylabel('purchase freq', color=colors[1][1])
+    # set shared x-label and x-ticks
+    ax2.set_xticks(range(len(customer_lv_.cohort)))
+    ax2.set_xticklabels(customer_lv_.cohort)
+    fig.autofmt_xdate(rotation=90, ha='right')
+    ax2.set_xlabel('first_cohort');
+    
+    st.pyplot(fig)
+    return df_cohort, customer_lv
+
 if __name__ == '__main__':
     # import data and preparation
     df_data = get_data()
@@ -155,4 +258,11 @@ if __name__ == '__main__':
              of customers in that cohort that are retained months after their initial 
              purchase.''')
     cohort_pivot = cohort_analysis(df_data)
-    
+    # calculates cohort rfm data
+    df_cohort = cohort_rfm(df_data)
+    # calculates customer rfm data and clv
+    st.write('''
+             These plots show the CLV for each cohort and how the trend of each 
+             of its components (frequency, average total sales, churn%).
+             ''')
+    clv = customer_lv(df_cohort)
