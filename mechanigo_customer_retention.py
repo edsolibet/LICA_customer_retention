@@ -480,7 +480,7 @@ def customer_search(df_data, df_cohort, models):
         pnbd, ggf = models
         df_cohort = update_cohort(pnbd, ggf, time)
         for checked_items in range(len(selected)):
-            df_list_retention.append(search_for_name(selected[checked_items]['full_name'], df_cohort))
+            df_list_retention.append(search_for_name_retention(selected[checked_items]['full_name'], df_cohort))
         st.dataframe(pd.concat(df_list_retention))
         st.write('Entries: '+str(len(pd.concat(df_list_data))))
     else:
