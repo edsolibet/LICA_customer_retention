@@ -554,6 +554,9 @@ if __name__ == '__main__':
             """)
     df_cohort = customer_search(df_data, df_cohort, [pnbd, ggf])
     
+    st.title('Active Probability')
+    plot_prob_active(pnbd)
+    
     st.title('Cohort Analysis')
     # plot cohort_retention_chart
     st.write('''This chart shows the retention rate for customers of various cohorts
