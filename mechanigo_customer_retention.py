@@ -27,11 +27,10 @@ from st_aggrid import GridOptionsBuilder, AgGrid
 
 import matplotlib.pyplot as plt
 import seaborn as sns
-import statsmodels, re, string, math
+import re, string, math
 from datetime import datetime
-from joblib import dump, load
-import plotly.graph_objects as go
-import plotly.express as px
+#import plotly.graph_objects as go
+#import plotly.express as px
 from lifetimes.fitters.pareto_nbd_fitter import ParetoNBDFitter
 from lifetimes.plotting import plot_probability_alive_matrix
 from lifetimes import GammaGammaFitter
@@ -68,11 +67,12 @@ def fix_name(name):
   
   Parameters:
   -----------
-    name: str
+  name: str
     
   Returns:
   --------
-    - fixed name; str
+  fixed name; str
+  
   '''
   name_list = list()
   # removes emojis and ascii characters (i.e. chinese chars)
@@ -108,9 +108,8 @@ def get_data():
     -------
     df_data: dataframe
         
-
     '''
-    #all_data = pd.read_csv("http://app.redash.licagroup.ph/api/queries/103/results.csv?api_key=QHb7Vxu8oKMyOVhf4bw7YtWRcuQfzvMS6YBSqgeM")
+
     all_data = pd.read_csv("http://app.redash.licagroup.ph/api/queries/128/results.csv?api_key=KisyFBTEg3GfiTZbrly189LJAHjwAzFIW7l9UElB", parse_dates = ['date','appointment_date','date_confirmed','date_cancelled'])
     all_data.loc[:,'date'] = pd.to_datetime(all_data.loc[:,'date'])
     # rename columns
@@ -118,17 +117,19 @@ def get_data():
     all_data.loc[:, 'model_year'] = all_data.loc[:,'model_year'].apply(lambda x: 'XX' if math.isnan(x) else str(int(x)))
     all_data.loc[:,'brand'] = all_data.apply(lambda x: '' if x.empty else fix_name(x['brand']).upper(), axis=1)
     all_data.loc[:,'model'] = all_data.apply(lambda x: '' if x.empty else fix_name(x['model']).upper(), axis=1)
-    #all_data.loc[:,'month'] = all_data.apply(lambda x: x['date'].month, 1)
-    #all_data.loc[:,'year'] = all_data.apply(lambda x: x['date'].year, 1)
+
     # remove cancelled transactions
     all_data = all_data[all_data['status']!='Cancelled']
     # remove duplicates and fix names
     all_data.loc[:,'full_name'] = all_data.apply(lambda x: fix_name(x['full_name']), axis=1)
-    all_data['model/year'] =all_data['model_year']+'/' + all_data['model'].str.upper()
+    all_data.loc[:, 'model/year'] = all_data.loc[:, 'model'].str.upper() + '/' + all_data.loc[:, 'model_year']
+    all_data.loc[:, 'plate_number'] = all_data.plate_number.fillna('0000000').apply(lambda x: x[:3].upper() + x[3:].strip())
+    
     # desired columns
     cols = ['id', 'date', 'email','full_name','brand', 'model', 'model_year', 
         'appointment_date', 'mechanic_name', 'sub_total', 'service_fee', 'total_cost', 
-        'date_confirmed', 'status', 'status_of_payment','customer_id','fuel_type','transmission','plate_number', 'phone','address','mileage','model/year']
+        'date_confirmed', 'status', 'status_of_payment','customer_id','fuel_type',
+        'transmission','plate_number', 'phone','address','mileage','model/year']
     # columns used for dropping duplicates
     drop_subset = ['full_name', 'brand', 'model', 'appointment_date','customer_id']
     all_data_ = all_data[cols].drop_duplicates(subset=drop_subset, keep='first')
@@ -146,12 +147,25 @@ def get_data():
     cohorts.columns = ['full_name', 'first_cohort']
     # combines cohort and first_cohort
     df_data = df_data.merge(cohorts, on='full_name', how='left')
+    
     # remove test entries
     remove_entries = ['mechanigo.ph', 'frig_test', 'sample quotation']
     df_data = df_data[df_data.loc[:,'full_name'].isin(remove_entries) == False]
     return df_data
 
-def cohort_analysis(df):
+def cohort_analysis(df_data):
+    '''
+    Parameters
+    ----------
+    df_data : dataframe
+        Customer transaction data
+    
+    Returns
+    -------
+    cohort_pivot : pivot table
+        Data for cohort analysis chart
+    
+    '''
     
     headers = df_data['cohort'].value_counts().reset_index()
     headers.columns = ['cohort', 'count']
@@ -177,7 +191,7 @@ def cohort_analysis(df):
     plt.yticks(ticks=cohort_dates, labels=y_labels, fontsize=15, rotation=90)
     plt.xticks(x_labels, x_labels, fontsize=15)
     # adjusted scale for colorbar via vmin/vmax
-    ax = sns.heatmap(cohort_pivot, annot=True, fmt='.1%', mask=cohort_pivot.isnull(), 
+    sns.heatmap(cohort_pivot, annot=True, fmt='.1%', mask=cohort_pivot.isnull(), 
                 square=True, linewidths=.5, cmap=sns.cubehelix_palette(8), annot_kws={"fontsize":15},
                 vmin=0, vmax=0.1)
     plt.xlabel('Months After First Purchase', size=18)
@@ -207,8 +221,8 @@ def cohort_rfm(df):
                                        cohort=('date', lambda x: x.min().year*100 + x.min().month),
                                        recency=('date', lambda x: (x.max() - x.min()).days),
                                        frequency=('id', lambda x: len(x) - 1),
-                                       total_sales=('total_cost', lambda x: np.sum(x)),
-                                       avg_sales=('total_cost', lambda x: np.mean(x)),
+                                       total_sales=('total_cost', lambda x: round(np.sum(x), 2)),
+                                       avg_sales=('total_cost', lambda x: round(np.mean(x), 2)),
                                        T = ('date', lambda x: (datetime.today()-x.min()).days + 1),
                                        year=('date', lambda x: x.min().year),
                                        month=('date', lambda x: x.min().month),
@@ -216,7 +230,7 @@ def cohort_rfm(df):
     df_cohort.columns = ['cohort', 'recency', 'frequency', 'total_sales', 
                          'avg_sales', 'T', 'year', 'month']
     df_cohort.loc[:,'ITT'] = df_cohort.apply(lambda row: round(get_ratio(row['recency'], row['frequency']), 2), axis=1)
-    df_cohort.loc[:, 'last_txn'] = df_cohort.apply(lambda x: x['T'] - x['recency'], axis=1)
+    df_cohort.loc[:, 'last_txn'] = df_cohort.apply(lambda x: int(x['T'] - x['recency']), axis=1)
     df_cohort = df_cohort.fillna(0)
     # filter data by returning customers
     df_cohort = df_cohort[df_cohort['avg_sales'] > 0]
@@ -291,7 +305,7 @@ def customer_lv(df_cohort):
     st.pyplot(fig)
     return customer_lv
 
-def bar_plot(df_cohort, option = 'Inter-transaction time'):
+def bar_plot(df_cohort, option = 'Inter-transaction time (ITT)'):
     '''
     Plots inter-transaction time of returning customers
 
@@ -305,14 +319,14 @@ def bar_plot(df_cohort, option = 'Inter-transaction time'):
 
     '''
     option = st.selectbox('Variable to show: ', 
-                          ('Inter-transaction time', 'Average Sales', 
+                          ('Inter-transaction time (ITT)', 'Average Sales', 
                            'Predicted Average Sale', 'Predicted CLV',
                            'Active Probability'))
-    choice = {'Inter-transaction time': 'ITT',
+    choice = {'Inter-transaction time (ITT)': 'ITT',
               'Average Sales': 'avg_sales',
               'Predicted Average Sale': 'pred_avg_sale',
               'Predicted CLV': 'pred_clv',
-              'Active Probability': 'prob_alive'}
+              'Active Probability': 'prob_active'}
     fig, ax1 = plt.subplots()
     bins = st.slider('Bins: ', 5, 55, 
                      value=25,
@@ -320,7 +334,7 @@ def bar_plot(df_cohort, option = 'Inter-transaction time'):
     a = df_cohort[df_cohort['frequency'] == 1][choice[option]]
     b = df_cohort[df_cohort['frequency'] > 1][choice[option]]
     ax1.hist([a.values, b.values], bins=bins, label=['Single', 'Multiple'])
-    x_lab = {'Inter-transaction time': 'Days',
+    x_lab = {'Inter-transaction time (ITT)': 'Days',
              'Average Sales': 'Amount (Php)',
              'Predicted Average Sale': 'Amount (Php)',
              'Predicted CLV': 'Amount (Php)',
@@ -346,7 +360,7 @@ def fit_models(df_cohort):
 
 def update_cohort(pnbd, ggf, t, df_cohort):
     # calculate probability of active
-    df_cohort.loc[:,'prob_alive'] = df_cohort.apply(lambda x: 
+    df_cohort.loc[:,'prob_active'] = df_cohort.apply(lambda x: 
             pnbd.conditional_probability_alive(x['frequency'], x['recency'], x['T']), 1)
     df_cohort.loc[:, 'expected_purchases'] = df_cohort.apply(lambda x: 
             pnbd.conditional_expected_number_of_purchases_up_to_time(t, x['frequency'], x['recency'], x['T']),1)
@@ -361,99 +375,83 @@ def update_cohort(pnbd, ggf, t, df_cohort):
             x['expected_purchases'] * x['pred_avg_sales'], axis=1)
     return df_cohort
         
-def pareto_NBD_model(df_cohort, t):
-    '''
-    Fits Pareto/Non Binomial Distribution (NBD) model on RFM data
-
-    Parameters
-    ----------
-    df_cohort : dataframe
-        See above
-    t : integer
-        Fture time interval (days) to predict
-
-    Returns
-    -------
-    df_cohort : dataframe
-        modified df_cohort
-    pnbd : model
-        prediction model
-
-    '''
-    pnbd = ParetoNBDFitter(penalizer_coef=0.001)
-    pnbd.fit(df_cohort['frequency'], df_cohort['recency'], df_cohort['T'])
-    # calculate probability of active
-    df_cohort.loc[:,'prob_alive'] = df_cohort.apply(lambda x: 
-            pnbd.conditional_probability_alive(x['frequency'], x['recency'], x['T']), 1)
-    df_cohort.loc[:, 'expected_purchases'] = df_cohort.apply(lambda x: 
-            pnbd.conditional_expected_number_of_purchases_up_to_time(t, x['frequency'], x['recency'], x['T']),1)
-    df_cohort.loc[:, 'prob_1_purchase'] = df_cohort.apply(lambda x: 
-            pnbd.conditional_probability_of_n_purchases_up_to_time(1, t, x['frequency'], x['recency'], x['T']),1)
-    
-    return df_cohort, pnbd
-
-def gamma_gamma_model(df_cohort):
-    '''
-    Fits Gamma Gamma model to predict avg monetary value and CLV
-
-    Parameters
-    ----------
-    df_cohort : dataframe
-        See above
-
-    Returns
-    -------
-    df_cohort : dataframe
-        Modified df_cohort
-    ggf : model
-        Gamma gamma model
-
-    '''
-    # model to estimate average monetary value of customer transactions
-    ggf = GammaGammaFitter(penalizer_coef=0.0)
-    # filter df to returning customers
-    returning_df_cohort = df_cohort[df_cohort['frequency']>0]
-    # fit model
-    ggf.fit(returning_df_cohort['frequency'], returning_df_cohort['avg_sales'])
-    # predicted average sales per customer
-    df_cohort.loc[:, 'pred_avg_sales'] = ggf.conditional_expected_average_profit(df_cohort['frequency'],df_cohort['total_sales'])
-    # clean negative avg sales output from model
-    df_cohort.loc[:,'pred_avg_sales'][df_cohort.loc[:,'pred_avg_sales'] < 0] = 0
-    # calculated clv for time t
-    df_cohort.loc[:,'pred_clv'] = df_cohort.apply(lambda x: 
-            x['expected_purchases'] * x['pred_avg_sales'], axis=1)
-    return df_cohort, ggf
 
 def search_for_name(name, df_data):
+  '''
+    Search for selected name in supplied dataframe. Similar to 
+    'search_for_name_retention'
+
+    Parameters
+    ----------
+    name : str
+        Selected name
+    df_data : dataframe
+        Customer transaction info dataframe
+    
+    Returns
+    -------
+    df_temp
+        similar to df_data
+
+  '''
+  # lower to match with names in dataframe
   df_data.full_name = df_data.apply(lambda x: x['full_name'].lower(), axis=1)
+  # search row with name
   names = df_data[df_data.apply(lambda x: name.lower() in x['full_name'], axis=1)]
-  df_temp = names[['customer_id','full_name', 'brand', 'model/year','fuel_type',
-                   'transmission','plate_number','phone','address','mileage',
-                   'appointment_date','id','service_name']]
+  # get info
+  df_temp = names[['customer_id','full_name', 'appointment_date', 'service_name', 
+                   'brand', 'model/year', 'fuel_type','transmission', 'mileage', 
+                   'plate_number','phone','address', 'id',]]
   df_temp['full_name'] = df_temp['full_name'].str.title()
   return df_temp.set_index('full_name')
 
 def search_for_name_retention(name, df_cohort):
+    '''
+    See 'search_for_name' above
+    '''
     df_cohort = df_cohort.reset_index()
+    # lower to match with names in dataframe
     df_cohort.loc[:,'full_name'] = df_cohort.apply(lambda x: x['full_name'].lower(), axis=1)
+    # search row with name
     names_retention = df_cohort[df_cohort.apply(lambda x: name.lower() in x['full_name'], axis=1)]
     df_temp_retention = names_retention[['full_name', 'recency', 'frequency', 'T', 
                                        'total_sales', 'avg_sales', 'ITT', 'last_txn',
-                                       'prob_alive', 'expected_purchases', 'prob_1_purchase',
+                                       'prob_active', 'expected_purchases', 'prob_1_purchase',
                                        'pred_avg_sales', 'pred_clv']]
     df_temp_retention['full_name'] = df_temp_retention['full_name'].str.title()
     return df_temp_retention.set_index('full_name')
 
 def customer_search(df_data, df_cohort, models):
+    '''
+    Displays info of selected customers.
+
+    Parameters
+    ----------
+    df_data : dataframe
+        DESCRIPTION.
+    df_cohort : dataframe
+        DESCRIPTION.
+    models : list
+        list of fitted Pareto/NBD and Gamma Gamma function
+
+    Returns
+    -------
+    df_cohort : dataframe
+        df_cohort with updated values
+
+    '''
     # Reprocess dataframe entries to be displayed
     df_temp = df_data.reset_index()[['full_name','email']].drop_duplicates(subset=['full_name','email'], keep='first')
+    # Capitalize first letter of each name
     df_temp['full_name'] = df_temp['full_name'].str.title()
-    df_display = df_temp
     
+    # table settings
+    df_display = df_temp.sort_values(by='full_name')
     gb = GridOptionsBuilder.from_dataframe(df_display)
     gb.configure_selection('multiple', use_checkbox=True, groupSelectsChildren="Group checkbox select children") #Enable multi-row selection
     gridOptions = gb.build()
     
+    # selection settings
     data_selection = AgGrid(
         df_display,
         gridOptions=gridOptions,
@@ -468,23 +466,52 @@ def customer_search(df_data, df_cohort, models):
     selected = data_selection['selected_rows']
     
     if selected:           
+        # row/s are selected
         df_list_data, df_list_retention = list(), list()
-        for checked_items in range(len(selected)):
-            df_list_data.append(search_for_name(selected[checked_items]['full_name'], df_data))
+        '''
+        For loops are separated due to time slider (must come after customer search)
+        '''
+        df_list_data = [search_for_name(selected[checked_items]['full_name'], df_data) 
+                        for checked_items in range(len(selected))]
+        # combine rows and write to streamlit
         st.dataframe(pd.concat(df_list_data))
         st.write('Found items: ' + str(len(data_selection['selected_rows']))+
                                       '.'+' Select on the expand button (hover on data table) to display data in fullscreen.')
+        st.write('Entries: ' + str(len(pd.concat(df_list_retention))))
         time = st.slider('Probability up to what time in days:', 15, 360, 
                      value=30,
                      step=15)
+        
+        # update df_cohort from time slider value
         pnbd, ggf = models
         df_cohort = update_cohort(pnbd, ggf, time, df_cohort)
-        for checked_items in range(len(selected)):
-            df_list_retention.append(search_for_name_retention(selected[checked_items]['full_name'], df_cohort))
+        
+        df_list_retention = [search_for_name_retention(selected[checked_items]['full_name'], df_cohort) 
+                             for checked_items in range(len(selected))]
+        
+        st.markdown('''
+                    Variable meanings: \n
+                    \n    
+                    - recency: Age of customer at last trans (last-first date of transaction in days). \n
+                    - frequency: No. of **REPEAT** transactions (ex. 2 transactions => 'frequency' = 1). \n
+                    - T: Age of customer at observation period (today, in days). \n
+                    - total/avg_sales: Total/Average sales of each customer transaction. \n
+                    - ITT: Inter-transaction time (average time between transactions). \n
+                    - last_txn: Days since last transaction. \n
+                    - prob_active: Probability that customer will still make a transaction in the future. \n
+                    - expected_purchases: Predicted no. of purchases within time t. \n
+                    - prob_1_purchase: Probability of making 1 purchase within time t. \n
+                    - pred_avg_sales: Predicted monetary value of future transactions. \n
+                    - pred_clv: Predicted customer lifetime value within time t. \n
+                
+                    ''')
+        
         st.dataframe(pd.concat(df_list_retention))
-        st.write('Entries: '+str(len(pd.concat(df_list_retention))))
+
     else:
-        st.write('Please click on an entry in the table to display data.')
+        st.write('Click on an entry in the table to display customer data.')
+        
+    return df_cohort
 
 if __name__ == '__main__':
     st.title('MechaniGo Customer Retention')
@@ -496,11 +523,11 @@ if __name__ == '__main__':
     pnbd, ggf = fit_models(df_cohort)
    
     st.markdown("""
-            This app searches for the **name** or **email** you select on the table!\n
+            This app searches for the **name** or **email** you select on the table.\n
             Filter the name/email on the dropdown menu as you hover on the column names. 
-            Click on the entry to display data below
+            Click on the entry to display data below. 
             """)
-    customer_search(df_data, df_cohort, [pnbd, ggf])
+    df_cohort = customer_search(df_data, df_cohort, [pnbd, ggf])
     
     # plot cohort_retention_chart
     st.write('''This chart shows the retention for customers of various cohorts
