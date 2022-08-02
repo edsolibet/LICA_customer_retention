@@ -11,7 +11,7 @@ import subprocess
 import pkg_resources
 
 required = {'pandas', 'numpy', 'lifetimes', 'matplotlib', 'seaborn', 'statsmodels', 
-            'datetime', 'joblib', 'streamlit', 'plotly'}
+            'datetime', 'joblib', 'streamlit', 'plotly', 'streamlit-aggrid'}
 installed = {pkg.key for pkg in pkg_resources.working_set}
 missing = required - installed
 
@@ -23,9 +23,11 @@ if missing:
 import pandas as pd
 import numpy as np
 import streamlit as st
+from st_aggrid import GridOptionsBuilder, AgGrid
+
 import matplotlib.pyplot as plt
 import seaborn as sns
-import statsmodels, re, string
+import statsmodels, re, string, math
 from datetime import datetime
 from joblib import dump, load
 import plotly.graph_objects as go
@@ -33,6 +35,8 @@ import plotly.express as px
 from lifetimes.fitters.pareto_nbd_fitter import ParetoNBDFitter
 from lifetimes.plotting import plot_probability_alive_matrix
 from lifetimes import GammaGammaFitter
+
+pd.options.mode.chained_assignment = None  # default='warn'
 
 def remove_emoji(text):
     emoj = re.compile("["
@@ -106,24 +110,27 @@ def get_data():
         
 
     '''
-    all_data = pd.read_csv("http://app.redash.licagroup.ph/api/queries/103/results.csv?api_key=QHb7Vxu8oKMyOVhf4bw7YtWRcuQfzvMS6YBSqgeM")
+    #all_data = pd.read_csv("http://app.redash.licagroup.ph/api/queries/103/results.csv?api_key=QHb7Vxu8oKMyOVhf4bw7YtWRcuQfzvMS6YBSqgeM")
+    all_data = pd.read_csv("http://app.redash.licagroup.ph/api/queries/128/results.csv?api_key=KisyFBTEg3GfiTZbrly189LJAHjwAzFIW7l9UElB", parse_dates = ['date','appointment_date','date_confirmed','date_cancelled'])
     all_data.loc[:,'date'] = pd.to_datetime(all_data.loc[:,'date'])
     # rename columns
     all_data = all_data.rename(columns={'year': 'model_year', 'name':'status'})
-    all_data.loc[:,'model_year'] = all_data.loc[:,'model_year'].fillna(0).astype(int)
-    all_data.loc[:,'month'] = all_data.apply(lambda x: x['date'].month, 1)
-    all_data.loc[:,'year'] = all_data.apply(lambda x: x['date'].year, 1)
+    all_data.loc[:, 'model_year'] = all_data.loc[:,'model_year'].apply(lambda x: 'XX' if math.isnan(x) else str(int(x)))
+    all_data.loc[:,'brand'] = all_data.apply(lambda x: '' if x.empty else fix_name(x['brand']).upper(), axis=1)
+    all_data.loc[:,'model'] = all_data.apply(lambda x: '' if x.empty else fix_name(x['model']).upper(), axis=1)
+    #all_data.loc[:,'month'] = all_data.apply(lambda x: x['date'].month, 1)
+    #all_data.loc[:,'year'] = all_data.apply(lambda x: x['date'].year, 1)
     # remove cancelled transactions
     all_data = all_data[all_data['status']!='Cancelled']
     # remove duplicates and fix names
     all_data.loc[:,'full_name'] = all_data.apply(lambda x: fix_name(x['full_name']), axis=1)
-    
+    all_data['model/year'] =all_data['model_year']+'/' + all_data['model'].str.upper()
     # desired columns
-    cols = ['id', 'date', 'year', 'month', 'full_name','make', 'model', 'model_year', 
-            'appointment_date', 'mechanic_name', 'sub_total', 'service_fee', 'total_cost', 
-            'date_confirmed', 'status', 'status_of_payment']
+    cols = ['id', 'date', 'email','full_name','brand', 'model', 'model_year', 
+        'appointment_date', 'mechanic_name', 'sub_total', 'service_fee', 'total_cost', 
+        'date_confirmed', 'status', 'status_of_payment','customer_id','fuel_type','transmission','plate_number', 'phone','address','mileage','model/year']
     # columns used for dropping duplicates
-    drop_subset = ['full_name', 'make', 'model', 'appointment_date']
+    drop_subset = ['full_name', 'brand', 'model', 'appointment_date','customer_id']
     all_data_ = all_data[cols].drop_duplicates(subset=drop_subset, keep='first')
     # combine "service name" of entries with same transaction id
     temp = all_data.fillna('').groupby(['id','full_name'])['service_name'].apply(lambda x: fix_name(', '.join(x).lower())).sort_index(ascending=False).reset_index()
@@ -133,7 +140,7 @@ def get_data():
     df_data.loc[:,'date'] = pd.to_datetime(df_data.loc[:,'date'])
     
     # converts each row date to a cohort
-    df_data.loc[:,'cohort'] = df_data.apply(lambda row: row['year']*100 + row['month'], axis=1)
+    df_data.loc[:,'cohort'] = df_data.apply(lambda row: row['date'].year*100 + row['date'].month, axis=1)
     # get first month & year of first purchase per full_name
     cohorts = df_data.groupby('full_name')['cohort'].min().reset_index()
     cohorts.columns = ['full_name', 'first_cohort']
@@ -185,7 +192,6 @@ def cohort_analysis(df):
 def cohort_rfm(df):
     '''
     
-
     Parameters
     ----------
     df : dataframe
@@ -392,6 +398,55 @@ def gamma_gamma_model(df_cohort):
             x['expected_purchases'] * x['pred_avg_sales'], axis=1)
     return df_cohort, ggf
 
+def search_for_name(df_data, name):
+  df_data.full_name = df_data.full_name.apply(lambda x: x.lower())
+  names = df_data.loc[df_data.apply(lambda x: name.lower() in x.full_name, axis=1)]
+  df_temp = names[['customer_id','full_name', 'brand', 'model/year','fuel_type','transmission','plate_number','phone','address','mileage','appointment_date','id','service_name']]
+  df_temp['full_name'] = df_temp['full_name'].str.title()
+  
+  return df_temp.set_index('full_name')
+
+
+def customer_search(df_data):
+    # Reprocess dataframe entries to be displayed
+    df_temp = df_data.reset_index()[['full_name','email']].drop_duplicates(subset=['full_name','email'], keep='first')
+    df_temp['full_name'] = df_temp['full_name'].str.title()
+    df_display = df_temp
+    
+    gb = GridOptionsBuilder.from_dataframe(df_display)
+    gb.configure_selection('multiple', use_checkbox=True, groupSelectsChildren="Group checkbox select children") #Enable multi-row selection
+    gridOptions = gb.build()
+    
+    data_selection = AgGrid(
+        df_display,
+        gridOptions=gridOptions,
+        data_return_mode='AS_INPUT', 
+        update_mode='MODEL_CHANGED', 
+        fit_columns_on_grid_load=True,
+        theme='blue', #Add theme color to the table
+        enable_enterprise_modules=True,
+        height=200, 
+        reload_data=False)
+    
+    selected = data_selection['selected_rows']
+    
+    if selected:
+        if len(selected)==1:
+            st.dataframe(search_for_name(selected[0]['full_name']))
+            st.write('Found entries: ' + str(len(data_selection['selected_rows']))+
+                                          '.'+' Select on the expand button to display data in fullscreen.')
+        elif len(selected)>1:
+            df_list =[]
+            for checked_items in range(len(selected)):
+                df_list.append(search_for_name(selected[checked_items]['full_name']))
+            st.dataframe(pd.concat(df_list))
+            st.write('Checked items: ' + str(len(data_selection['selected_rows']))+
+                                          '.'+' Select on the expand button (hover on data table) to display data in fullscreen.')
+            st.write('Entries: '+str(len(pd.concat(df_list))))
+            df_list = []
+    else:
+        st.write('Please click on an entry in the table to display data.')
+
 if __name__ == '__main__':
     st.title('MechaniGo Customer Retention')
     # import data and preparation
@@ -402,6 +457,7 @@ if __name__ == '__main__':
     df_cohort, pnbd = pareto_NBD_model(df_cohort, 30)
     # fits gamma_gamma model on rfm data to calculate predicted avg sales and clv
     df_cohort, ggf = gamma_gamma_model(df_cohort)
+    customer_search(df_data)
     # show dataframe in streamlit
     st.write('Customer transaction data in MechaniGO.ph')
     st.dataframe(df_cohort)
