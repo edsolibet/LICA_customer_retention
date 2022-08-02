@@ -354,15 +354,13 @@ def pareto_NBD_model(df_cohort, t):
     pnbd = ParetoNBDFitter(penalizer_coef=0.001)
     pnbd.fit(df_cohort['frequency'], df_cohort['recency'], df_cohort['T'])
     # calculate probability of active
-    time = st.slider('Probability up to what time in days:', 15, 360, 
-                     value=t,
-                     step=15)
+
     df_cohort.loc[:,'prob_alive'] = df_cohort.apply(lambda x: 
             pnbd.conditional_probability_alive(x['frequency'], x['recency'], x['T']), 1)
     df_cohort.loc[:, 'expected_purchases'] = df_cohort.apply(lambda x: 
-            pnbd.conditional_expected_number_of_purchases_up_to_time(time, x['frequency'], x['recency'], x['T']),1)
+            pnbd.conditional_expected_number_of_purchases_up_to_time(t, x['frequency'], x['recency'], x['T']),1)
     df_cohort.loc[:, 'prob_1_purchase'] = df_cohort.apply(lambda x: 
-            pnbd.conditional_probability_of_n_purchases_up_to_time(1, time, x['frequency'], x['recency'], x['T']),1)
+            pnbd.conditional_probability_of_n_purchases_up_to_time(1, t, x['frequency'], x['recency'], x['T']),1)
     
     return df_cohort, pnbd
 
@@ -398,7 +396,7 @@ def gamma_gamma_model(df_cohort):
             x['expected_purchases'] * x['pred_avg_sales'], axis=1)
     return df_cohort, ggf
 
-def search_for_name(df_data, name):
+def search_for_name(name, df_data):
   df_data.full_name = df_data.full_name.apply(lambda x: x.lower())
   names = df_data.loc[df_data.apply(lambda x: name.lower() in x.full_name, axis=1)]
   df_temp = names[['customer_id','full_name', 'brand', 'model/year','fuel_type','transmission','plate_number','phone','address','mileage','appointment_date','id','service_name']]
@@ -432,13 +430,13 @@ def customer_search(df_data):
     
     if selected:
         if len(selected)==1:
-            st.dataframe(search_for_name(selected[0]['full_name']))
+            st.dataframe(search_for_name(selected[0]['full_name']), df_data)
             st.write('Found entries: ' + str(len(data_selection['selected_rows']))+
                                           '.'+' Select on the expand button to display data in fullscreen.')
         elif len(selected)>1:
             df_list =[]
             for checked_items in range(len(selected)):
-                df_list.append(search_for_name(selected[checked_items]['full_name']))
+                df_list.append(search_for_name(selected[checked_items]['full_name'], df_data))
             st.dataframe(pd.concat(df_list))
             st.write('Checked items: ' + str(len(data_selection['selected_rows']))+
                                           '.'+' Select on the expand button (hover on data table) to display data in fullscreen.')
@@ -453,13 +451,22 @@ if __name__ == '__main__':
     df_data = get_data()
     # calculates cohort rfm data
     df_cohort = cohort_rfm(df_data)
+    time = st.slider('Probability up to what time in days:', 15, 360, 
+                     value=30,
+                     step=15)
     # fits pareto/nbd model on rfm data
-    df_cohort, pnbd = pareto_NBD_model(df_cohort, 30)
+    df_cohort, pnbd = pareto_NBD_model(df_cohort, time)
     # fits gamma_gamma model on rfm data to calculate predicted avg sales and clv
     df_cohort, ggf = gamma_gamma_model(df_cohort)
+    st.markdown("""
+            This app searches for the **name** or **email** you select on the table!\n
+            Filter the name/email on the dropdown menu as you hover on the column names. 
+            Click on the entry to display data below
+            """)
     customer_search(df_data)
     # show dataframe in streamlit
     st.write('Customer transaction data in MechaniGO.ph')
+    
     st.dataframe(df_cohort)
     # plot cohort_retention_chart
     st.write('''This chart shows the retention for customers of various cohorts
