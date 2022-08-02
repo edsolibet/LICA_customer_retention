@@ -398,7 +398,7 @@ def update_cohort(pnbd, ggf, t, df_cohort):
     df_cohort.loc[:,'pred_avg_sales'][df_cohort.loc[:,'pred_avg_sales'] < 0] = 0
     # calculated clv for time t
     df_cohort.loc[:,'pred_clv'] = df_cohort.apply(lambda x: 
-            x['expected_purchases'] * x['pred_avg_sales'], axis=1)
+            x['expected_purchases'] * x['avg_sales'], axis=1)
     return df_cohort
         
 @st.cache(persist=True)
