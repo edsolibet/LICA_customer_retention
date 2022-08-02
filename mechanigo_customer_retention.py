@@ -435,7 +435,7 @@ def search_for_name(name, df_data):
 
 def search_for_name_retention(name, df_cohort):
     df_cohort = df_cohort.reset_index()
-    df_cohort = df_cohort.apply(lambda x: x['full_name'].lower(), axis=1)
+    df_cohort.loc[:,'full_name'] = df_cohort.apply(lambda x: x['full_name'].lower(), axis=1)
     names_retention = df_cohort[df_cohort.apply(lambda x: name.lower() in x['full_name'], axis=1)]
     df_temp_retention = names_retention[['full_name', 'recency', 'frequency', 'T', 
                                        'total_sales', 'avg_sales', 'ITT', 'last_txn',
