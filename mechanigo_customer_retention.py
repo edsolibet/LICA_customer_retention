@@ -425,8 +425,8 @@ def gamma_gamma_model(df_cohort):
     return df_cohort, ggf
 
 def search_for_name(name, df_data):
-  df_data.full_name = df_data.full_name.apply(lambda x: x.lower())
-  names = df_data.loc[df_data.apply(lambda x: name.lower() in x['full_name'], axis=1)]
+  df_data.full_name = df_data.apply(lambda x: x['full_name'].lower())
+  names = df_data[df_data.apply(lambda x: name.lower() in x['full_name'], axis=1)]
   df_temp = names[['customer_id','full_name', 'brand', 'model/year','fuel_type',
                    'transmission','plate_number','phone','address','mileage',
                    'appointment_date','id','service_name']]
@@ -435,8 +435,8 @@ def search_for_name(name, df_data):
 
 def search_for_name_retention(name, df_cohort):
     df_cohort = df_cohort.reset_index()
-    df_cohort = df_cohort.full_name.apply(lambda x: x.lower())
-    names_retention = df_cohort.loc[df_cohort.apply(lambda x: name.lower() in x['full_name'], axis=1)]
+    df_cohort = df_cohort.apply(lambda x: x['full_name'].lower())
+    names_retention = df_cohort[df_cohort.apply(lambda x: name.lower() in x['full_name'], axis=1)]
     df_temp_retention = names_retention[['full_name', 'recency', 'frequency', 'T', 
                                        'total_sales', 'avg_sales', 'ITT', 'last_txn',
                                        'prob_alive', 'expected_purchases', 'prob_1_purchase',
