@@ -94,7 +94,7 @@ def get_ratio(a, b):
   except:
     return 999
 
-@st.cache(persist=True)
+@st.cache()
 def get_data():
     
     '''
@@ -205,7 +205,7 @@ def cohort_analysis(df_data):
     
     return cohort_pivot
 
-@st.cache(persist=True)
+@st.cache()
 def cohort_rfm(df):
     '''
     
@@ -351,7 +351,7 @@ def bar_plot(df_cohort, option = 'Inter-transaction time (ITT)'):
     plt.tight_layout()
     st.pyplot(fig)
 
-@st.cache(persist=True)
+@st.cache()
 def fit_models(df_cohort):
     pnbd = ParetoNBDFitter(penalizer_coef=0.001)
     pnbd.fit(df_cohort['frequency'], df_cohort['recency'], df_cohort['T'])
@@ -364,7 +364,7 @@ def fit_models(df_cohort):
     
     return pnbd, ggf
 
-@st.cache(persist=True)
+@st.cache()
 def plot_prob_active(pnbd):
     '''
     Plots the active probability matrix for the range of recency and frequency
@@ -383,7 +383,7 @@ def plot_prob_active(pnbd):
     plot_probability_alive_matrix(pnbd)
     st.pyplot(fig)
 
-@st.cache(persist=True)
+@st.cache()
 def update_cohort(pnbd, ggf, t, df_cohort):
     # calculate probability of active
     df_cohort.loc[:,'prob_active'] = df_cohort.apply(lambda x: 
@@ -401,7 +401,7 @@ def update_cohort(pnbd, ggf, t, df_cohort):
             x['expected_purchases'] * x['avg_sales'], axis=1)
     return df_cohort
         
-@st.cache(persist=True)
+@st.cache()
 def search_for_name(name, df_data):
   '''
     Search for selected name in supplied dataframe. Similar to 
@@ -431,7 +431,7 @@ def search_for_name(name, df_data):
   df_temp['full_name'] = df_temp['full_name'].str.title()
   return df_temp.set_index('full_name')
 
-@st.cache(persist=True)
+@st.cache()
 def search_for_name_retention(name, df_cohort):
     '''
     See 'search_for_name' above
@@ -448,7 +448,7 @@ def search_for_name_retention(name, df_cohort):
     df_temp_retention['full_name'] = df_temp_retention['full_name'].str.title()
     return df_temp_retention.set_index('full_name')
 
-@st.cache(persist=True)
+@st.cache()
 def customer_search(df_data, df_cohort, models):
     '''
     Displays info of selected customers.
