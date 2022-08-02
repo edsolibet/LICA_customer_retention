@@ -393,29 +393,32 @@ def gamma_gamma_model(df_cohort):
     return df_cohort, ggf
 
 if __name__ == '__main__':
+    st.title('MechaniGo Customer Retention')
     # import data and preparation
     df_data = get_data()
+    # calculates cohort rfm data
+    df_cohort = cohort_rfm(df_data)
+    # fits pareto/nbd model on rfm data
+    df_cohort, pnbd = pareto_NBD_model(df_cohort, 30)
+    # fits gamma_gamma model on rfm data to calculate predicted avg sales and clv
+    df_cohort, ggf = gamma_gamma_model(df_cohort)
     # show dataframe in streamlit
     st.write('Customer transaction data in MechaniGO.ph')
-    st.dataframe(df_data)
+    st.dataframe(df_cohort)
     # plot cohort_retention_chart
     st.write('''This chart shows the retention for customers of various cohorts
              (grouped by first month of transaction). The data shows the percentage 
              of customers in that cohort that are retained months after their initial 
              purchase.''')
     cohort_pivot = cohort_analysis(df_data)
-    # calculates cohort rfm data
-    df_cohort = cohort_rfm(df_data)
+    
     # calculates customer rfm data and clv
     st.write('''
              These plots show the CLV for each cohort and how the trend of each 
              of its components (frequency, average total sales, churn%).
              ''')
     clv = customer_lv(df_cohort)
-    # fits pareto/nbd model on rfm data
-    df_cohort, pnbd = pareto_NBD_model(df_cohort, 30)
-    # fits gamma_gamma model on rfm data to calculate predicted avg sales and clv
-    df_cohort, ggf = gamma_gamma_model(df_cohort)
+    
     # plots ITT
     st.write('''
              This bar plot shows the distribution of single/multiple repeat 
