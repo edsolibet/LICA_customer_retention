@@ -477,7 +477,7 @@ def customer_search(df_data, df_cohort, models):
         st.dataframe(pd.concat(df_list_data))
         st.write('Found items: ' + str(len(data_selection['selected_rows']))+
                                       '.'+' Select on the expand button (hover on data table) to display data in fullscreen.')
-        st.write('Entries: ' + str(len(pd.concat(df_list_retention))))
+        st.write('Entries: ' + str(len(pd.concat(df_list_data))))
         time = st.slider('Probability up to what time in days:', 15, 360, 
                      value=30,
                      step=15)
@@ -503,7 +503,6 @@ def customer_search(df_data, df_cohort, models):
                     - prob_1_purchase: Probability of making 1 purchase within time t. \n
                     - pred_avg_sales: Predicted monetary value of future transactions. \n
                     - pred_clv: Predicted customer lifetime value within time t. \n
-                
                     ''')
         
         st.dataframe(pd.concat(df_list_retention))
@@ -529,17 +528,19 @@ if __name__ == '__main__':
             """)
     df_cohort = customer_search(df_data, df_cohort, [pnbd, ggf])
     
+    st.title('Cohort Analysis')
     # plot cohort_retention_chart
-    st.write('''This chart shows the retention for customers of various cohorts
+    st.write('''This chart shows the retention rate for customers of various cohorts
              (grouped by first month of transaction). The data shows the percentage 
              of customers in that cohort that are retained months after their initial 
              purchase.''')
     cohort_pivot = cohort_analysis(df_data)
     
+    st.title('Cohort Lifetime Value')
     # calculates customer rfm data and clv
     st.write('''
              These plots show the CLV for each cohort and how the trend of each 
-             of its components (frequency, average total sales, churn%).
+             of its components (frequency, average total sales, churn%) vary.
              ''')
     clv = customer_lv(df_cohort)
     
