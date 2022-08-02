@@ -10,7 +10,8 @@ import sys
 import subprocess
 import pkg_resources
 
-required = {'pandas', 'numpy', 'lifetimes', 'matplotlib', 'seaborn', 'statsmodels', 'datetime', 'joblib', 'streamlit'}
+required = {'pandas', 'numpy', 'lifetimes', 'matplotlib', 'seaborn', 'statsmodels', 
+            'datetime', 'joblib', 'streamlit', 'plotly'}
 installed = {pkg.key for pkg in pkg_resources.working_set}
 missing = required - installed
 
@@ -27,6 +28,8 @@ import seaborn as sns
 import statsmodels, re, string
 from datetime import datetime
 from joblib import dump, load
+import plotly.graph_objects as go
+import plotly.express as px
 from lifetimes.fitters.pareto_nbd_fitter import ParetoNBDFitter
 from lifetimes.plotting import plot_probability_alive_matrix
 from lifetimes import GammaGammaFitter
@@ -207,6 +210,7 @@ def cohort_rfm(df):
     df_cohort.columns = ['cohort', 'recency', 'frequency', 'total_sales', 
                          'avg_sales', 'T', 'year', 'month']
     df_cohort.loc[:,'ITT'] = df_cohort.apply(lambda row: get_ratio(row['recency'], row['frequency']), axis=1)
+    df_cohort.loc[:, 'last_txn'] = df_cohort.apply(lambda x: x['T'] - x['recency'], axis=1)
     df_cohort = df_cohort.fillna(0)
     # filter data by returning customers
     df_cohort = df_cohort[df_cohort['avg_sales'] > 0]
@@ -295,16 +299,26 @@ def bar_plot(df_cohort, option = 'Inter-transaction time'):
 
     '''
     option = st.selectbox('Variable to show: ', 
-                          ('Inter-transaction time', 'Average Sales'))
+                          ('Inter-transaction time', 'Average Sales', 
+                           'Predicted Average Sale', 'Predicted CLV',
+                           'Active Probability'))
     choice = {'Inter-transaction time': 'ITT',
-              'Average Sales': 'avg_sales'}
+              'Average Sales': 'avg_sales',
+              'Predicted Average Sale': 'pred_avg_sale',
+              'Predicted CLV': 'pred_clv',
+              'Active Probability': 'prob_alive'}
     fig, ax1 = plt.subplots()
-    bins = st.slider('Bins: ', 5, 40, 8)
+    bins = st.slider('Bins: ', 5, 55, 
+                     value=25,
+                     step=5)
     a = df_cohort[df_cohort['frequency'] == 1][choice[option]]
     b = df_cohort[df_cohort['frequency'] > 1][choice[option]]
     ax1.hist([a.values, b.values], bins=bins, label=['Single', 'Multiple'])
     x_lab = {'Inter-transaction time': 'Days',
-             'Average Sales': 'Amount (Php)'}
+             'Average Sales': 'Amount (Php)',
+             'Predicted Average Sale': 'Amount (Php)',
+             'Predicted CLV': 'Amount (Php)',
+             'Active Probability': '%'}
     plt.xlabel(x_lab[option], fontsize=12)
     plt.ylabel('Number of customers', fontsize=12)
     plt.title('{} by returning customers'.format(option), fontsize=14);
@@ -313,12 +327,70 @@ def bar_plot(df_cohort, option = 'Inter-transaction time'):
     st.pyplot(fig)
 
 def pareto_NBD_model(df_cohort, t):
+    '''
+    Fits Pareto/Non Binomial Distribution (NBD) model on RFM data
+
+    Parameters
+    ----------
+    df_cohort : dataframe
+        See above
+    t : integer
+        Fture time interval (days) to predict
+
+    Returns
+    -------
+    df_cohort : dataframe
+        modified df_cohort
+    pnbd : model
+        prediction model
+
+    '''
     pnbd = ParetoNBDFitter(penalizer_coef=0.001)
     pnbd.fit(df_cohort['frequency'], df_cohort['recency'], df_cohort['T'])
     # calculate probability of active
-    df_cohort['prob_alive'] = df_cohort.apply(lambda x: pnbd.conditional_probability_alive(t, x['frequency'], x['recency'], x['T']), 1)
+    time = st.slider('Probability up to what time in days:', 15, 360, 
+                     value=t,
+                     step=15)
+    df_cohort.loc[:,'prob_alive'] = df_cohort.apply(lambda x: 
+            pnbd.conditional_probability_alive(x['frequency'], x['recency'], x['T']), 1)
+    df_cohort.loc[:, 'expected_purchases'] = df_cohort.apply(lambda x: 
+            pnbd.conditional_expected_number_of_purchases_up_to_time(time, x['frequency'], x['recency'], x['T']),1)
+    df_cohort.loc[:, 'prob_1_purchase'] = df_cohort.apply(lambda x: 
+            pnbd.conditional_probability_of_n_purchases_up_to_time(1, time, x['frequency'], x['recency'], x['T']),1)
     
     return df_cohort, pnbd
+
+def gamma_gamma_model(df_cohort):
+    '''
+    Fits Gamma Gamma model to predict avg monetary value and CLV
+
+    Parameters
+    ----------
+    df_cohort : dataframe
+        See above
+
+    Returns
+    -------
+    df_cohort : dataframe
+        Modified df_cohort
+    ggf : model
+        Gamma gamma model
+
+    '''
+    # model to estimate average monetary value of customer transactions
+    ggf = GammaGammaFitter(penalizer_coef=0.0)
+    # filter df to returning customers
+    returning_df_cohort = df_cohort[df_cohort['frequency']>0]
+    # fit model
+    ggf.fit(returning_df_cohort['frequency'], returning_df_cohort['avg_sales'])
+    # predicted average sales per customer
+    df_cohort.loc[:, 'pred_avg_sales'] = ggf.conditional_expected_average_profit(df_cohort['frequency'],df_cohort['total_sales'])
+    # clean negative avg sales output from model
+    df_cohort.loc[:,'pred_avg_sales'][df_cohort.loc[:,'pred_avg_sales'] < 0] = 0
+    # calculated clv for time t
+    df_cohort.loc[:,'pred_clv'] = df_cohort.apply(lambda x: 
+            x['expected_purchases'] * x['pred_avg_sales'], axis=1)
+    return df_cohort, ggf
 
 if __name__ == '__main__':
     # import data and preparation
@@ -340,9 +412,14 @@ if __name__ == '__main__':
              of its components (frequency, average total sales, churn%).
              ''')
     clv = customer_lv(df_cohort)
+    # fits pareto/nbd model on rfm data
+    df_cohort, pnbd = pareto_NBD_model(df_cohort, 30)
+    # fits gamma_gamma model on rfm data to calculate predicted avg sales and clv
+    df_cohort, ggf = gamma_gamma_model(df_cohort)
     # plots ITT
     st.write('''
              This bar plot shows the distribution of single/multiple repeat 
              transaction(s) based on:
              ''')
     bar_plot(df_cohort)
+    
