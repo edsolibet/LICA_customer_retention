@@ -494,9 +494,7 @@ def customer_search(df_data, df_cohort, models):
     if selected:           
         # row/s are selected
         df_list_data, df_list_retention = list(), list()
-        '''
-        For loops are separated due to time slider (must come after customer search)
-        '''
+        # For loops are separated due to time slider (must come after customer search)
         df_list_data = [search_for_name(selected[checked_items]['full_name'], df_data) 
                         for checked_items in range(len(selected))]
         # combine rows and write to streamlit
@@ -554,7 +552,6 @@ if __name__ == '__main__':
             """)
     df_cohort = customer_search(df_data, df_cohort, [pnbd, ggf])
     
-    st.title('Active Probability')
     plot_prob_active(pnbd)
     
     st.title('Cohort Analysis')
