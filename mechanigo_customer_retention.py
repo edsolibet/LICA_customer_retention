@@ -430,7 +430,7 @@ def customer_search(df_data):
     
     if selected:
         if len(selected)==1:
-            st.dataframe(search_for_name(selected[0]['full_name']), df_data)
+            st.dataframe(search_for_name(selected[0]['full_name'], df_data))
             st.write('Found entries: ' + str(len(data_selection['selected_rows']))+
                                           '.'+' Select on the expand button to display data in fullscreen.')
         elif len(selected)>1:
