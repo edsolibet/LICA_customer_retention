@@ -199,7 +199,7 @@ def cohort_rfm(df):
                                        recency=('date', lambda x: (x.max() - x.min()).days),
                                        frequency=('id', lambda x: len(x) - 1),
                                        total_sales=('total_cost', lambda x: np.sum(x)),
-                                       avg_sales=('avg_cost', lambda x: np.mean(x)),
+                                       avg_sales=('total_cost', lambda x: np.mean(x)),
                                        T = ('date', lambda x: (datetime.today()-x.min()).days + 1),
                                        year=('date', lambda x: x.min().year),
                                        month=('date', lambda x: x.min().month),
@@ -234,7 +234,7 @@ def customer_lv(df_cohort):
     # calculate monthly customer lifetime value per cohort
     for d in sorted(df_cohort['cohort'].unique()):
       customer_m = df_cohort[df_cohort['cohort']==d]
-      avg_sales.append(round(np.mean(customer_m['total_sales']), 2))
+      avg_sales.append(round(np.mean(customer_m['avg_sales']), 2))
       purchase_freq.append(round(np.mean(customer_m['frequency']), 2))
       retention_rate = customer_m[customer_m['frequency']>0].shape[0]/customer_m.shape[0]
       churn.append(round(1-retention_rate,2))
@@ -281,7 +281,7 @@ def customer_lv(df_cohort):
     st.pyplot(fig)
     return customer_lv
 
-def bar_plot(df_cohort):
+def bar_plot(df_cohort, option = 'Inter-transaction time'):
     '''
     Plots inter-transaction time of returning customers
 
@@ -303,9 +303,11 @@ def bar_plot(df_cohort):
     a = df_cohort[df_cohort['frequency'] == 1][choice[option]]
     b = df_cohort[df_cohort['frequency'] > 1][choice[option]]
     ax1.hist([a.values, b.values], bins=bins, label=['Single', 'Multiple'])
-    plt.xlabel('Days', fontsize=12)
+    x_lab = {'Inter-transaction time': 'Days',
+             'Average Sales': 'Amount (Php)'}
+    plt.xlabel(x_lab[option], fontsize=12)
     plt.ylabel('Number of customers', fontsize=12)
-    plt.title('Inter-transaction time by returning customers', fontsize=14);
+    plt.title('{} by returning customers'.format(option), fontsize=14);
     plt.legend()
     plt.tight_layout()
     st.pyplot(fig)
