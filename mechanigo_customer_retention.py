@@ -94,6 +94,7 @@ def get_ratio(a, b):
   except:
     return 999
 
+@st.cache(persist=True)
 def get_data():
     
     '''
@@ -153,6 +154,7 @@ def get_data():
     df_data = df_data[df_data.loc[:,'full_name'].isin(remove_entries) == False]
     return df_data
 
+@st.cache(persist=True)
 def cohort_analysis(df_data):
     '''
     Parameters
@@ -203,6 +205,7 @@ def cohort_analysis(df_data):
     
     return cohort_pivot
 
+@st.cache(persist=True)
 def cohort_rfm(df):
     '''
     
@@ -237,6 +240,7 @@ def cohort_rfm(df):
     
     return df_cohort
 
+@st.cache(persist=True)
 def customer_lv(df_cohort):
     '''
     Calculates customer lifetime value
@@ -305,6 +309,7 @@ def customer_lv(df_cohort):
     st.pyplot(fig)
     return customer_lv
 
+@st.cache(persist=True)
 def bar_plot(df_cohort, option = 'Inter-transaction time (ITT)'):
     '''
     Plots inter-transaction time of returning customers
@@ -346,6 +351,7 @@ def bar_plot(df_cohort, option = 'Inter-transaction time (ITT)'):
     plt.tight_layout()
     st.pyplot(fig)
 
+@st.cache(persist=True)
 def fit_models(df_cohort):
     pnbd = ParetoNBDFitter(penalizer_coef=0.001)
     pnbd.fit(df_cohort['frequency'], df_cohort['recency'], df_cohort['T'])
@@ -358,6 +364,26 @@ def fit_models(df_cohort):
     
     return pnbd, ggf
 
+@st.cache(persist=True)
+def plot_prob_active(pnbd):
+    '''
+    Plots the active probability matrix for the range of recency and frequency
+    
+    Parameters
+    ----------
+    pnbd : model
+        Fitted Pareto/NBD model
+    '''
+    st.title('Active Probability Matrix')
+    st.markdown('''
+                High recency means customer is most likely still active (long intervals between purchases).\n
+                High frequency with low recency means one-time instance of many orders with long hiatus.
+                ''')
+    fig = plt.figure(figsize=(12,8))
+    plot_probability_alive_matrix(pnbd)
+    st.pyplot(fig)
+
+@st.cache(persist=True)
 def update_cohort(pnbd, ggf, t, df_cohort):
     # calculate probability of active
     df_cohort.loc[:,'prob_active'] = df_cohort.apply(lambda x: 
@@ -367,7 +393,7 @@ def update_cohort(pnbd, ggf, t, df_cohort):
     df_cohort.loc[:, 'prob_1_purchase'] = df_cohort.apply(lambda x: 
             pnbd.conditional_probability_of_n_purchases_up_to_time(1, t, x['frequency'], x['recency'], x['T']),1)
     # predicted average sales per customer
-    df_cohort.loc[:, 'pred_avg_sales'] = ggf.conditional_expected_average_profit(df_cohort['frequency'],df_cohort['total_sales'])
+    df_cohort.loc[:, 'pred_avg_sales'] = ggf.conditional_expected_average_profit(df_cohort['frequency'],df_cohort['avg_sales'])
     # clean negative avg sales output from model
     df_cohort.loc[:,'pred_avg_sales'][df_cohort.loc[:,'pred_avg_sales'] < 0] = 0
     # calculated clv for time t
@@ -375,7 +401,7 @@ def update_cohort(pnbd, ggf, t, df_cohort):
             x['expected_purchases'] * x['pred_avg_sales'], axis=1)
     return df_cohort
         
-
+@st.cache(persist=True)
 def search_for_name(name, df_data):
   '''
     Search for selected name in supplied dataframe. Similar to 
@@ -405,6 +431,7 @@ def search_for_name(name, df_data):
   df_temp['full_name'] = df_temp['full_name'].str.title()
   return df_temp.set_index('full_name')
 
+@st.cache(persist=True)
 def search_for_name_retention(name, df_cohort):
     '''
     See 'search_for_name' above
@@ -421,6 +448,7 @@ def search_for_name_retention(name, df_cohort):
     df_temp_retention['full_name'] = df_temp_retention['full_name'].str.title()
     return df_temp_retention.set_index('full_name')
 
+@st.cache(persist=True)
 def customer_search(df_data, df_cohort, models):
     '''
     Displays info of selected customers.
@@ -428,9 +456,7 @@ def customer_search(df_data, df_cohort, models):
     Parameters
     ----------
     df_data : dataframe
-        DESCRIPTION.
     df_cohort : dataframe
-        DESCRIPTION.
     models : list
         list of fitted Pareto/NBD and Gamma Gamma function
 
@@ -492,17 +518,17 @@ def customer_search(df_data, df_cohort, models):
         st.markdown('''
                     Variable meanings: \n
                     \n    
-                    - recency: Age of customer at last trans (last-first date of transaction in days). \n
-                    - frequency: No. of **REPEAT** transactions (ex. 2 transactions => 'frequency' = 1). \n
-                    - T: Age of customer at observation period (today, in days). \n
-                    - total/avg_sales: Total/Average sales of each customer transaction. \n
-                    - ITT: Inter-transaction time (average time between transactions). \n
-                    - last_txn: Days since last transaction. \n
-                    - prob_active: Probability that customer will still make a transaction in the future. \n
-                    - expected_purchases: Predicted no. of purchases within time t. \n
-                    - prob_1_purchase: Probability of making 1 purchase within time t. \n
-                    - pred_avg_sales: Predicted monetary value of future transactions. \n
-                    - pred_clv: Predicted customer lifetime value within time t. \n
+                    - **recency**: Age of customer at last trans (last-first date of transaction in days). \n
+                    - **frequency**: No. of **REPEAT** transactions (ex. 2 transactions => 'frequency' = 1). \n
+                    - **T**: Age of customer at observation period (today, in days). \n
+                    - **total/avg_sales**: Total/Average sales of each customer transaction. \n
+                    - **ITT**: Inter-transaction time (average time between transactions). \n
+                    - **last_txn**: Days since last transaction. \n
+                    - **prob_active**: Probability that customer will still make a transaction in the future. \n
+                    - **expected_purchases**: Predicted no. of purchases within time t. \n
+                    - **prob_1_purchase**: Probability of making 1 purchase within time t. \n
+                    - **pred_avg_sales**: Predicted monetary value of future transactions. \n
+                    - **pred_clv**: Predicted customer lifetime value within time t. \n
                     ''')
         
         st.dataframe(pd.concat(df_list_retention))
