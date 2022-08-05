@@ -410,14 +410,14 @@ def update_cohort(_pnbd, _ggf, t, df_cohort):
 @st.experimental_memo(suppress_st_warning=True)
 def show_table(df):
     # table settings
-
+    df = df.reset_index()
     gb = GridOptionsBuilder.from_dataframe(df.sort_values(by='name'))
     gb.configure_default_column(min_column_width=8)
     gridOptions = gb.build()
     
     # selection settings
     data_selection = AgGrid(
-        df.sort_values(by='name'),
+        df.sort_values(by='full_name'),
         gridOptions=gridOptions,
         data_return_mode='AS_INPUT', 
         update_mode='MODEL_CHANGED', 
