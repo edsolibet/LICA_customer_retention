@@ -357,7 +357,7 @@ def bar_plot(df_cohort, option = 'Inter-transaction time (ITT)'):
     plt.tight_layout()
     st.pyplot(fig)
 
-@st.experimental_simpleton(suppress_st_warning=True)
+@st.experimental_singleton(suppress_st_warning=True)
 def fit_models(df_cohort):
     pnbd = ParetoNBDFitter(penalizer_coef=0.001)
     pnbd.fit(df_cohort['frequency'], df_cohort['recency'], df_cohort['T'])
