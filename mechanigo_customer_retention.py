@@ -234,7 +234,7 @@ def cohort_rfm(df):
     
     return df_cohort
 
-@st.experimental_memo(suppress_st_warning=True)
+#@st.experimental_memo(suppress_st_warning=True)
 def customer_lv(df_cohort):
     '''
     Calculates customer lifetime value
@@ -303,7 +303,7 @@ def customer_lv(df_cohort):
     st.pyplot(fig)
     return customer_lv
 
-@st.experimental_memo(suppress_st_warning=True)
+#@st.experimental_memo(suppress_st_warning=True)
 def bar_plot(df_cohort, option = 'Inter-transaction time (ITT)'):
     '''
     Plots inter-transaction time of returning customers
@@ -358,7 +358,6 @@ def fit_models(df_cohort):
     
     return pnbd, ggf
 
-@st.experimental_memo(suppress_st_warning=True)
 def plot_prob_active(_pnbd):
     '''
     Plots the active probability matrix for the range of recency and frequency
@@ -395,7 +394,6 @@ def update_cohort(_pnbd, _ggf, t, df_cohort):
             x['expected_purchases'] * x['avg_sales'], axis=1)
     return df_cohort
         
-@st.experimental_memo(suppress_st_warning=True)
 def search_for_name(name, df_data):
   '''
     Search for selected name in supplied dataframe. Similar to 
@@ -425,7 +423,7 @@ def search_for_name(name, df_data):
   df_temp['full_name'] = df_temp['full_name'].str.title()
   return df_temp.set_index('full_name')
 
-@st.experimental_memo(suppress_st_warning=True)
+
 def search_for_name_retention(name, df_cohort):
     '''
     See 'search_for_name' above
@@ -442,7 +440,6 @@ def search_for_name_retention(name, df_cohort):
     df_temp_retention['full_name'] = df_temp_retention['full_name'].str.title()
     return df_temp_retention.set_index('full_name')
 
-@st.experimental_memo(suppress_st_warning=True)
 def customer_search(df_data, df_cohort, _models):
     '''
     Displays info of selected customers.
