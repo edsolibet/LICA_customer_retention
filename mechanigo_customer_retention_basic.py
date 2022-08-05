@@ -302,7 +302,7 @@ def customer_lv(df_cohort):
     st.pyplot(fig)
     return customer_lv
 
-
+@st.experimental_memo(suppress_st_warning=True)
 def bar_plot(df_cohort, option = 'Inter-transaction time (ITT)'):
     '''
     Plots inter-transaction time of returning customers
@@ -399,7 +399,7 @@ def show_table(df):
     # table settings
     df = df.reset_index()
     gb = GridOptionsBuilder.from_dataframe(df.sort_values(by='full_name'))
-    gb.configure_default_column(min_column_width=8)
+    gb.configure_default_column(min_column_width=12)
     gridOptions = gb.build()
     
     # selection settings
@@ -411,7 +411,7 @@ def show_table(df):
         fit_columns_on_grid_load=True,
         theme='blue', #Add theme color to the table
         enable_enterprise_modules=True,
-        height=300, 
+        height=500, 
         reload_data=False)
     
 
