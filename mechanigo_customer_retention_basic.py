@@ -147,7 +147,7 @@ def get_data():
     df_data = df_data[df_data.loc[:,'full_name'].isin(remove_entries) == False]
     return df_data
 
-@st.experimental_memo(suppress_st_warning=True)
+
 def cohort_analysis(df_data):
     '''
     Parameters
@@ -233,7 +233,7 @@ def cohort_rfm(df):
     
     return df_cohort
 
-@st.experimental_memo(suppress_st_warning=True)
+
 def customer_lv(df_cohort):
     '''
     Calculates customer lifetime value
@@ -302,7 +302,7 @@ def customer_lv(df_cohort):
     st.pyplot(fig)
     return customer_lv
 
-@st.experimental_memo(suppress_st_warning=True)
+
 def bar_plot(df_cohort, option = 'Inter-transaction time (ITT)'):
     '''
     Plots inter-transaction time of returning customers
@@ -357,7 +357,6 @@ def fit_models(df_cohort):
     
     return pnbd, ggf
 
-@st.experimental_memo(suppress_st_warning=True)
 def plot_prob_active(_pnbd):
     '''
     Plots the active probability matrix for the range of recency and frequency
@@ -394,7 +393,7 @@ def update_cohort(_pnbd, _ggf, t, df_cohort):
             x['expected_purchases'] * x['avg_sales'], axis=1)
     return df_cohort
 
-@st.experimental_memo(suppress_st_warning=True)
+
 def show_table(df):
     # table settings
     df = df.reset_index()
