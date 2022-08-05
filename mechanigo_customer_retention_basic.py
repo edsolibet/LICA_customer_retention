@@ -357,7 +357,7 @@ def bar_plot(df_cohort, option = 'Inter-transaction time (ITT)'):
     plt.tight_layout()
     st.pyplot(fig)
 
-@st.experimental_memo(suppress_st_warning=True)
+@st.experimental_simpleton(suppress_st_warning=True)
 def fit_models(df_cohort):
     pnbd = ParetoNBDFitter(penalizer_coef=0.001)
     pnbd.fit(df_cohort['frequency'], df_cohort['recency'], df_cohort['T'])
@@ -390,7 +390,7 @@ def plot_prob_active(_pnbd):
     st.pyplot(fig)
 
 @st.experimental_memo(suppress_st_warning=True)
-def update_cohort(pnbd, ggf, t, df_cohort):
+def update_cohort(_pnbd, _ggf, t, df_cohort):
     # calculate probability of active
     df_cohort.loc[:,'prob_active'] = df_cohort.apply(lambda x: 
             pnbd.conditional_probability_alive(x['frequency'], x['recency'], x['T']), 1)
