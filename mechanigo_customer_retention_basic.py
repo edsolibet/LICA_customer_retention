@@ -1,17 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Aug  5 14:33:20 2022
-
-@author: carlo
-"""
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Aug  1 22:03:31 2022
-
-@author: carlo
-"""
 # import required modules
-
 import sys
 import subprocess
 import pkg_resources
@@ -411,7 +398,7 @@ def update_cohort(_pnbd, _ggf, t, df_cohort):
 def show_table(df):
     # table settings
     df = df.reset_index()
-    gb = GridOptionsBuilder.from_dataframe(df.sort_values(by='name'))
+    gb = GridOptionsBuilder.from_dataframe(df.sort_values(by='full_name'))
     gb.configure_default_column(min_column_width=8)
     gridOptions = gb.build()
     
