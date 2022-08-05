@@ -443,7 +443,7 @@ def search_for_name_retention(name, df_cohort):
     return df_temp_retention.set_index('full_name')
 
 @st.experimental_memo(suppress_st_warning=True)
-def customer_search(df_data, df_cohort, models):
+def customer_search(df_data, df_cohort, _models):
     '''
     Displays info of selected customers.
 
