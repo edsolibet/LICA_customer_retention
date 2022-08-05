@@ -398,7 +398,6 @@ def show_table(df):
     # table settings
     df = df.reset_index()
     gb = GridOptionsBuilder.from_dataframe(df.sort_values(by='full_name'))
-    gb.configure_default_column(min_column_width=12)
     gridOptions = gb.build()
     
     # selection settings
