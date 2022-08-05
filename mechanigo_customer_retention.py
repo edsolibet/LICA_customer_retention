@@ -148,7 +148,7 @@ def get_data():
     df_data = df_data[df_data.loc[:,'full_name'].isin(remove_entries) == False]
     return df_data
 
-@st.experimental_memo(suppress_st_warning=True)
+#@st.experimental_memo(suppress_st_warning=True)
 def cohort_analysis(df_data):
     '''
     Parameters
@@ -317,10 +317,6 @@ def bar_plot(df_cohort, option = 'Inter-transaction time (ITT)'):
     ITT plot
 
     '''
-    option = st.selectbox('Variable to show: ', 
-                          ('Inter-transaction time (ITT)', 'Average Sales', 
-                           'Predicted Average Sale', 'Predicted CLV',
-                           'Active Probability'))
     choice = {'Inter-transaction time (ITT)': 'ITT',
               'Average Sales': 'avg_sales',
               'Predicted Average Sale': 'pred_avg_sale',
@@ -566,5 +562,9 @@ if __name__ == '__main__':
              This bar plot shows the distribution of single/multiple repeat 
              transaction(s) based on:
              ''')
-    bar_plot(df_cohort)
+    option = st.selectbox('Variable to show: ', 
+                          ('Inter-transaction time (ITT)', 'Average Sales', 
+                           'Predicted Average Sale', 'Predicted CLV',
+                           'Active Probability'))
+    bar_plot(df_cohort, option=option)
     
