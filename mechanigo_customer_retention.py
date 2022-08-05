@@ -374,20 +374,20 @@ def plot_prob_active(_pnbd):
                 High frequency with low recency means one-time instance of many orders with long hiatus.
                 ''')
     fig = plt.figure(figsize=(12,8))
-    plot_probability_alive_matrix(pnbd)
+    plot_probability_alive_matrix(_pnbd)
     st.pyplot(fig)
 
 @st.experimental_memo(suppress_st_warning=True)
 def update_cohort(_pnbd, _ggf, t, df_cohort):
     # calculate probability of active
     df_cohort.loc[:,'prob_active'] = df_cohort.apply(lambda x: 
-            pnbd.conditional_probability_alive(x['frequency'], x['recency'], x['T']), 1)
+            _pnbd.conditional_probability_alive(x['frequency'], x['recency'], x['T']), 1)
     df_cohort.loc[:, 'expected_purchases'] = df_cohort.apply(lambda x: 
-            pnbd.conditional_expected_number_of_purchases_up_to_time(t, x['frequency'], x['recency'], x['T']),1)
+            _pnbd.conditional_expected_number_of_purchases_up_to_time(t, x['frequency'], x['recency'], x['T']),1)
     df_cohort.loc[:, 'prob_1_purchase'] = df_cohort.apply(lambda x: 
-            pnbd.conditional_probability_of_n_purchases_up_to_time(1, t, x['frequency'], x['recency'], x['T']),1)
+            _pnbd.conditional_probability_of_n_purchases_up_to_time(1, t, x['frequency'], x['recency'], x['T']),1)
     # predicted average sales per customer
-    df_cohort.loc[:, 'pred_avg_sales'] = ggf.conditional_expected_average_profit(df_cohort['frequency'],df_cohort['avg_sales'])
+    df_cohort.loc[:, 'pred_avg_sales'] = _ggf.conditional_expected_average_profit(df_cohort['frequency'],df_cohort['avg_sales'])
     # clean negative avg sales output from model
     df_cohort.loc[:,'pred_avg_sales'][df_cohort.loc[:,'pred_avg_sales'] < 0] = 0
     # calculated clv for time t
@@ -501,7 +501,7 @@ def customer_search(df_data, df_cohort, _models):
                      step=15)
         
         # update df_cohort from time slider value
-        pnbd, ggf = models
+        pnbd, ggf = _models
         df_cohort = update_cohort(pnbd, ggf, time, df_cohort)
         
         df_list_retention = [search_for_name_retention(selected[checked_items]['full_name'], df_cohort) 
