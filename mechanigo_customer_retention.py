@@ -1,18 +1,5 @@
 # import required modules
 
-import sys
-import subprocess
-import pkg_resources
-
-required = {'pandas', 'numpy', 'lifetimes', 'matplotlib', 'seaborn', 'statsmodels', 
-            'datetime', 'joblib', 'streamlit', 'plotly', 'streamlit-aggrid'}
-installed = {pkg.key for pkg in pkg_resources.working_set}
-missing = required - installed
-
-if missing:
-    python = sys.executable
-    subprocess.check_call([python, '-m', 'pip', 'install', *missing], stdout=subprocess.DEVNULL)
-
 
 import pandas as pd
 import numpy as np
@@ -24,7 +11,7 @@ import seaborn as sns
 import re, string, math
 from datetime import datetime
 #import plotly.graph_objects as go
-#import plotly.express as px
+import plotly.graph_objects as go
 from lifetimes.fitters.pareto_nbd_fitter import ParetoNBDFitter
 from lifetimes.plotting import plot_probability_alive_matrix
 from lifetimes import GammaGammaFitter
@@ -82,11 +69,8 @@ def fix_name(name):
   return ' '.join(name_list).strip()
 
 def get_ratio(a, b):
-    
-  try:
-    return a/b
-  except:
-    return 999
+  return a/b if b else 999
+
 
 @st.experimental_memo(suppress_st_warning=True)
 def get_data():
@@ -210,11 +194,11 @@ def cohort_rfm(df):
 
     Returns
     -------
-    df_cohort : dataframe
+    df_retention : dataframe
         Customer dataframe with extracted RFM features
 
     '''
-    df_cohort = df.groupby('full_name').agg(
+    df_retention = df.groupby('full_name').agg(
                                        cohort=('date', lambda x: x.min().year*100 + x.min().month),
                                        recency=('date', lambda x: (x.max() - x.min()).days),
                                        frequency=('id', lambda x: len(x) - 1),
@@ -224,24 +208,24 @@ def cohort_rfm(df):
                                        year=('date', lambda x: x.min().year),
                                        month=('date', lambda x: x.min().month),
                                        )
-    df_cohort.columns = ['cohort', 'recency', 'frequency', 'total_sales', 
+    df_retention.columns = ['cohort', 'recency', 'frequency', 'total_sales', 
                          'avg_sales', 'T', 'year', 'month']
-    df_cohort.loc[:,'ITT'] = df_cohort.apply(lambda row: round(get_ratio(row['recency'], row['frequency']), 2), axis=1)
-    df_cohort.loc[:, 'last_txn'] = df_cohort.apply(lambda x: int(x['T'] - x['recency']), axis=1)
-    df_cohort = df_cohort.fillna(0)
+    df_retention.loc[:,'ITT'] = df_retention.apply(lambda row: round(get_ratio(row['recency'], row['frequency']), 2), axis=1)
+    df_retention.loc[:, 'last_txn'] = df_retention.apply(lambda x: int(x['T'] - x['recency']), axis=1)
+    df_retention = df_retention.fillna(0)
     # filter data by returning customers
-    df_cohort = df_cohort[df_cohort['avg_sales'] > 0]
+    df_retention = df_retention[df_retention['avg_sales'] > 0]
     
-    return df_cohort
+    return df_retention
 
 #@st.experimental_memo(suppress_st_warning=True)
-def customer_lv(df_cohort):
+def customer_lv(df_retention):
     '''
     Calculates customer lifetime value
 
     Parameters
     ----------
-    df_cohort : dataframe
+    df_retention : dataframe
         Cohort rfm data
 
     Returns
@@ -254,8 +238,8 @@ def customer_lv(df_cohort):
     monthly_clv, avg_sales, purchase_freq, churn = list(), list(), list(), list()
 
     # calculate monthly customer lifetime value per cohort
-    for d in sorted(df_cohort['cohort'].unique()):
-      customer_m = df_cohort[df_cohort['cohort']==d]
+    for d in sorted(df_retention['cohort'].unique()):
+      customer_m = df_retention[df_retention['cohort']==d]
       avg_sales.append(round(np.mean(customer_m['avg_sales']), 2))
       purchase_freq.append(round(np.mean(customer_m['frequency']), 2))
       retention_rate = customer_m[customer_m['frequency']>0].shape[0]/customer_m.shape[0]
@@ -263,7 +247,7 @@ def customer_lv(df_cohort):
       clv = round((avg_sales[-1]*purchase_freq[-1]/churn[-1]), 2)
       monthly_clv.append(clv)
     
-    customer_lv = pd.DataFrame({'cohort':sorted(df_cohort['cohort'].unique()), 'clv':monthly_clv, 
+    customer_lv = pd.DataFrame({'cohort':sorted(df_retention['cohort'].unique()), 'clv':monthly_clv, 
                                  'avg_sales': avg_sales, 'purchase_freq': purchase_freq,
                                  'churn': churn})
     # plot monthly clv
@@ -304,13 +288,13 @@ def customer_lv(df_cohort):
     return customer_lv
 
 #@st.experimental_memo(suppress_st_warning=True)
-def bar_plot(df_cohort, option = 'Inter-transaction time (ITT)'):
+def bar_plot(df_retention, option = 'Inter-transaction time (ITT)'):
     '''
     Plots inter-transaction time of returning customers
 
     Parameters
     ----------
-    df_cohort : dataframe
+    df_retention : dataframe
 
     Returns
     -------
@@ -322,35 +306,49 @@ def bar_plot(df_cohort, option = 'Inter-transaction time (ITT)'):
               'Predicted Average Sale': 'pred_avg_sale',
               'Predicted CLV': 'pred_clv',
               'Active Probability': 'prob_active'}
-    fig, ax1 = plt.subplots()
-    bins = st.slider('Bins: ', 5, 55, 
+    #fig, ax1 = plt.subplots()
+    # ax1.hist([a.values, b.values], bins=bins, label=['Single', 'Multiple'])
+    bins = st.slider('Bins: ', 5, 50, 
                      value=25,
                      step=5)
-    a = df_cohort[df_cohort['frequency'] == 1][choice[option]]
-    b = df_cohort[df_cohort['frequency'] > 1][choice[option]]
-    ax1.hist([a.values, b.values], bins=bins, label=['Single', 'Multiple'])
+    
+    a = df_retention[df_retention['frequency'] == 1][choice[option]]
+    b = df_retention[df_retention['frequency'] > 1][choice[option]]
+    
+    fig = go.Figure()
+    fig.add_trace(go.Histogram(x = a, nbinsx=bins))
+    fig.add_trace(go.Histogram(x = b, nbinsy=bins))
+    
     x_lab = {'Inter-transaction time (ITT)': 'Days',
              'Average Sales': 'Amount (Php)',
              'Predicted Average Sale': 'Amount (Php)',
              'Predicted CLV': 'Amount (Php)',
              'Active Probability': '%'}
-    plt.xlabel(x_lab[option], fontsize=12)
-    plt.ylabel('Number of customers', fontsize=12)
-    plt.title('{} by returning customers'.format(option), fontsize=14);
-    plt.legend()
-    plt.tight_layout()
-    st.pyplot(fig)
+    
+    fig.update_layout(barmode='overlay',
+                      xaxis_title_text=x_lab[option],
+                      yaxis_title_text='Number of customers',
+                      title_text='{} by returning customers'.format(option))
+    fig.update_traces(opacity=0.75)
+    st.plotly_chart(fig, use_container_width=True)
+    
+    #plt.xlabel(x_lab[option], fontsize=12)
+    #plt.ylabel('Number of customers', fontsize=12)
+    #plt.title('{} by returning customers'.format(option), fontsize=14);
+    #plt.legend()
+    #plt.tight_layout()
+    #st.pyplot(fig)
 
 @st.experimental_singleton(suppress_st_warning=True)
-def fit_models(df_cohort):
+def fit_models(df_retention):
     pnbd = ParetoNBDFitter(penalizer_coef=0.001)
-    pnbd.fit(df_cohort['frequency'], df_cohort['recency'], df_cohort['T'])
+    pnbd.fit(df_retention['frequency'], df_retention['recency'], df_retention['T'])
     # model to estimate average monetary value of customer transactions
     ggf = GammaGammaFitter(penalizer_coef=0.0)
     # filter df to returning customers
-    returning_df_cohort = df_cohort[df_cohort['frequency']>0]
+    returning_df_retention = df_retention[df_retention['frequency']>0]
     # fit model
-    ggf.fit(returning_df_cohort['frequency'], returning_df_cohort['avg_sales'])
+    ggf.fit(returning_df_retention['frequency'], returning_df_retention['avg_sales'])
     
     return pnbd, ggf
 
@@ -373,90 +371,59 @@ def plot_prob_active(_pnbd):
     st.pyplot(fig)
 
 @st.experimental_memo(suppress_st_warning=True)
-def update_cohort(_pnbd, _ggf, t, df_cohort):
+def update_retention(_pnbd, _ggf, t, df_retention):
     # calculate probability of active
-    df_cohort.loc[:,'prob_active'] = df_cohort.apply(lambda x: 
+    df_retention.loc[:,'prob_active'] = df_retention.apply(lambda x: 
             _pnbd.conditional_probability_alive(x['frequency'], x['recency'], x['T']), 1)
-    df_cohort.loc[:, 'expected_purchases'] = df_cohort.apply(lambda x: 
+    df_retention.loc[:, 'expected_purchases'] = df_retention.apply(lambda x: 
             _pnbd.conditional_expected_number_of_purchases_up_to_time(t, x['frequency'], x['recency'], x['T']),1)
-    df_cohort.loc[:, 'prob_1_purchase'] = df_cohort.apply(lambda x: 
+    df_retention.loc[:, 'prob_1_purchase'] = df_retention.apply(lambda x: 
             _pnbd.conditional_probability_of_n_purchases_up_to_time(1, t, x['frequency'], x['recency'], x['T']),1)
     # predicted average sales per customer
-    df_cohort.loc[:, 'pred_avg_sales'] = _ggf.conditional_expected_average_profit(df_cohort['frequency'],df_cohort['avg_sales'])
+    df_retention.loc[:, 'pred_avg_sales'] = _ggf.conditional_expected_average_profit(df_retention['frequency'],df_retention['avg_sales'])
     # clean negative avg sales output from model
-    df_cohort.loc[:,'pred_avg_sales'][df_cohort.loc[:,'pred_avg_sales'] < 0] = 0
+    df_retention.loc[:,'pred_avg_sales'][df_retention.loc[:,'pred_avg_sales'] < 0] = 0
     # calculated clv for time t
-    df_cohort.loc[:,'pred_clv'] = df_cohort.apply(lambda x: 
+    df_retention.loc[:,'pred_sales'] = df_retention.apply(lambda x: 
             x['expected_purchases'] * x['avg_sales'], axis=1)
-    return df_cohort
+    return df_retention
         
-def search_for_name(name, df_data):
-  '''
-    Search for selected name in supplied dataframe. Similar to 
-    'search_for_name_retention'
 
-    Parameters
-    ----------
-    name : str
-        Selected name
-    df_data : dataframe
-        Customer transaction info dataframe
-    
-    Returns
-    -------
-    df_temp
-        similar to df_data
-
-  '''
-  # lower to match with names in dataframe
-  df_data.full_name = df_data.apply(lambda x: x['full_name'].lower(), axis=1)
-  # search row with name
-  names = df_data[df_data.apply(lambda x: name.lower() in x['full_name'], axis=1)]
-  # get info
-  df_temp = names[['customer_id','full_name', 'appointment_date', 'service_name', 
-                   'brand', 'model/year', 'fuel_type','transmission', 'mileage', 
-                   'plate_number','phone','address', 'id',]]
-  df_temp['full_name'] = df_temp['full_name'].str.title()
-  return df_temp.set_index('full_name')
-
-
-def search_for_name_retention(name, df_cohort):
+def search_for_name_retention(name, df_retention):
     '''
-    See 'search_for_name' above
+    Function to search for customer names in backend data
     '''
-    df_cohort = df_cohort.reset_index()
+    df_retention = df_retention.reset_index()
     # lower to match with names in dataframe
-    df_cohort.loc[:,'full_name'] = df_cohort.apply(lambda x: x['full_name'].lower(), axis=1)
+    df_retention.loc[:,'full_name'] = df_retention.apply(lambda x: x['full_name'].lower(), axis=1)
     # search row with name
-    names_retention = df_cohort[df_cohort.apply(lambda x: name.lower() in x['full_name'], axis=1)]
-    df_temp_retention = names_retention[['full_name', 'recency', 'frequency', 'T', 
-                                       'total_sales', 'avg_sales', 'ITT', 'last_txn',
-                                       'prob_active', 'expected_purchases', 'prob_1_purchase',
-                                       'pred_avg_sales', 'pred_clv']]
+    names_retention = df_retention[df_retention.apply(lambda x: name.lower() in x['full_name'], axis=1)]
+    df_temp_retention = names_retention[['full_name', 'prob_active', 'expected_purchases', 'avg_sales', 'pred_sales',
+                                         'last_txn', 'ITT', 'total_sales', 'cohort']]
     df_temp_retention['full_name'] = df_temp_retention['full_name'].str.title()
     return df_temp_retention.set_index('full_name')
 
-def customer_search(df_data, df_cohort, _models):
+def customer_search(df_data, df_retention, _models):
     '''
-    Displays info of selected customers.
+    Displays retention info of selected customers.
 
     Parameters
     ----------
     df_data : dataframe
-    df_cohort : dataframe
+    df_retention : dataframe
     models : list
         list of fitted Pareto/NBD and Gamma Gamma function
 
     Returns
     -------
-    df_cohort : dataframe
-        df_cohort with updated values
+    df_retention : dataframe
+        df_retention with updated values
 
     '''
     # Reprocess dataframe entries to be displayed
     df_temp = df_data.reset_index()[['full_name','email']].drop_duplicates(subset=['full_name','email'], keep='first')
     # Capitalize first letter of each name
-    df_temp['full_name'] = df_temp['full_name'].str.title()
+    df_temp.loc[:, 'full_name'] = df_temp.loc[:, 'full_name'].str.title()
     
     # table settings
     df_display = df_temp.sort_values(by='full_name')
@@ -480,40 +447,28 @@ def customer_search(df_data, df_cohort, _models):
     
     if selected:           
         # row/s are selected
-        df_list_data, df_list_retention = list(), list()
-        # For loops are separated due to time slider (must come after customer search)
-        df_list_data = [search_for_name(selected[checked_items]['full_name'], df_data) 
-                        for checked_items in range(len(selected))]
-        # combine rows and write to streamlit
-        st.dataframe(pd.concat(df_list_data))
-        st.write('Found items: ' + str(len(data_selection['selected_rows']))+
-                                      '.'+' Select on the expand button (hover on data table) to display data in fullscreen.')
-        st.write('Entries: ' + str(len(pd.concat(df_list_data))))
-        time = st.slider('Probability up to what time in days:', 15, 360, 
+        df_list_retention = list()
+        time = st.slider('Probability up to what time in days:', 15, 60, 
                      value=30,
                      step=15)
         
-        # update df_cohort from time slider value
+        # update df_retention from time slider value
         pnbd, ggf = _models
-        df_cohort = update_cohort(pnbd, ggf, time, df_cohort)
+        df_retention = update_retention(pnbd, ggf, time, df_retention)
         
-        df_list_retention = [search_for_name_retention(selected[checked_items]['full_name'], df_cohort) 
+        df_list_retention = [search_for_name_retention(selected[checked_items]['full_name'], df_retention) 
                              for checked_items in range(len(selected))]
         
         st.markdown('''
                     Variable meanings: \n
                     \n    
-                    - **recency**: Age of customer at last trans (last-first date of transaction in days). \n
-                    - **frequency**: No. of **REPEAT** transactions (ex. 2 transactions => 'frequency' = 1). \n
-                    - **T**: Age of customer at observation period (today, in days). \n
                     - **total/avg_sales**: Total/Average sales of each customer transaction. \n
                     - **ITT**: Inter-transaction time (average time between transactions). \n
                     - **last_txn**: Days since last transaction. \n
                     - **prob_active**: Probability that customer will still make a transaction in the future. \n
                     - **expected_purchases**: Predicted no. of purchases within time t. \n
-                    - **prob_1_purchase**: Probability of making 1 purchase within time t. \n
-                    - **pred_avg_sales**: Predicted monetary value of future transactions. \n
-                    - **pred_clv**: Predicted customer lifetime value within time t. \n
+                    - **pred_sales**: Predicted customer sales within time t. \n
+                    - **cohort**: Year-month of first customer purchase
                     ''')
         
         st.dataframe(pd.concat(df_list_retention))
@@ -521,25 +476,26 @@ def customer_search(df_data, df_cohort, _models):
     else:
         st.write('Click on an entry in the table to display customer data.')
         
-    return df_cohort
+    return df_retention
 
 if __name__ == '__main__':
-    st.title('MechaniGo Customer Retention')
+    st.title('MechaniGO.ph Customer Retention')
     # import data and preparation
     df_data = get_data()
     # calculates cohort rfm data
-    df_cohort = cohort_rfm(df_data)
+    df_retention = cohort_rfm(df_data)
+    
     # fit pareto/nbd and gamma gamma models
-    pnbd, ggf = fit_models(df_cohort)
+    pnbd, ggf = fit_models(df_retention)
    
     st.markdown("""
             This app searches for the **name** or **email** you select on the table.\n
             Filter the name/email on the dropdown menu as you hover on the column names. 
             Click on the entry to display data below. 
             """)
-    df_cohort = customer_search(df_data, df_cohort, [pnbd, ggf])
+    df_retention = customer_search(df_data, df_retention, [pnbd, ggf])
     
-    plot_prob_active(pnbd)
+    # plot_prob_active(pnbd)
     
     st.title('Cohort Analysis')
     # plot cohort_retention_chart
@@ -555,7 +511,7 @@ if __name__ == '__main__':
              These plots show the CLV for each cohort and how the trend of each 
              of its components (frequency, average total sales, churn%) vary.
              ''')
-    clv = customer_lv(df_cohort)
+    clv = customer_lv(df_retention)
     
     # plots ITT
     st.write('''
@@ -566,5 +522,5 @@ if __name__ == '__main__':
                           ('Inter-transaction time (ITT)', 'Average Sales', 
                            'Predicted Average Sale', 'Predicted CLV',
                            'Active Probability'))
-    bar_plot(df_cohort, option=option)
+    bar_plot(df_retention, option=option)
     
