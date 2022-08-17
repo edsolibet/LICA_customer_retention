@@ -334,6 +334,7 @@ def customer_lv_(df_retention):
                                  name=y_labels[i-1]),
                          row=i, col=1)
         fig.update_yaxes(title_text = y_labels[i-1], row=i, col=1)
+    fig.update_xaxes(type='category')
 
     fig.update_layout(title_text = 'Cohort CLV characteristics',
                      height = 800,
