@@ -329,7 +329,7 @@ def bar_plot(df_retention, option = 'Inter-transaction time (ITT)'):
                       xaxis_title_text=x_lab[option],
                       yaxis_title_text='Number of customers',
                       title_text='{} by returning customers'.format(option))
-    fig.update_traces(opacity=0.75)
+    fig.update_traces(opacity=0.6)
     st.plotly_chart(fig, use_container_width=True)
     
     #plt.xlabel(x_lab[option], fontsize=12)
@@ -374,7 +374,7 @@ def plot_prob_active(_pnbd):
 def update_retention(_pnbd, _ggf, t, df_retention):
     # calculate probability of active
     df_retention.loc[:,'prob_active'] = df_retention.apply(lambda x: 
-            _pnbd.conditional_probability_alive(x['frequency'], x['recency'], x['T']), 1)
+           _pnbd.conditional_probability_alive(x['frequency'], x['recency'], x['T']), 1)
     df_retention.loc[:, 'expected_purchases'] = df_retention.apply(lambda x: 
             _pnbd.conditional_expected_number_of_purchases_up_to_time(t, x['frequency'], x['recency'], x['T']),1)
     df_retention.loc[:, 'prob_1_purchase'] = df_retention.apply(lambda x: 
@@ -386,7 +386,7 @@ def update_retention(_pnbd, _ggf, t, df_retention):
     # calculated clv for time t
     df_retention.loc[:,'pred_sales'] = df_retention.apply(lambda x: 
             x['expected_purchases'] * x['avg_sales'], axis=1)
-    return df_retention
+    return df_retention.round(3)
         
 
 def search_for_name_retention(name, df_retention):
@@ -401,7 +401,7 @@ def search_for_name_retention(name, df_retention):
     df_temp_retention = names_retention[['full_name', 'prob_active', 'expected_purchases', 'avg_sales', 'pred_sales',
                                          'last_txn', 'ITT', 'total_sales', 'cohort']]
     df_temp_retention.loc[:, 'full_name'] = df_temp_retention.loc[:, 'full_name'].str.title()
-    return df_temp_retention.set_index('full_name')
+    return df_temp_retention.set_index('full_name').round(3)
 
 def customer_search(df_data, df_retention):
     '''
@@ -458,6 +458,9 @@ def customer_search(df_data, df_retention):
         
         df_list_retention = pd.concat(df_list_retention)
         st.dataframe(df_list_retention)
+        
+        if st.button('Deselect all'):
+            gridOptions.api.deselectAll()
 
     else:
         st.write('Click on an entry in the table to display customer data.')
