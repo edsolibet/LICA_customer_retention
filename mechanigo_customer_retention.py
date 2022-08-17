@@ -421,13 +421,17 @@ def customer_search(df_data, df_retention):
 
     '''
     # Reprocess dataframe entries to be displayed
-    df_temp = df_data.reset_index()[['full_name', 'email', 'prob_active', 'expected_purchases', 
-                                     'avg_sales', 'pred_sales', 'last_txn', 'ITT', 'total_sales', 'cohort']].drop_duplicates(subset=['full_name','email'], keep='first')
+    df_temp = df_data.reset_index()[['full_name', 'email']].drop_duplicates(subset=['full_name','email'], keep='first')
+    
+    df_temp_ret = df_retention.reset_index()['full_name', 'prob_active', 'expected_purchases', 
+                                     'avg_sales', 'pred_sales', 'last_txn', 'ITT', 'total_sales', 'cohort']
+    
+    df_merged = pd.merge(df_temp, df_temp_ret, how='left', left_on='full_name', right_on='full_name')
     # Capitalize first letter of each name
-    df_temp.loc[:, 'full_name'] = df_temp.loc[:, 'full_name'].str.title()
+    df_merged.loc[:, 'full_name'] = df_merged.loc[:, 'full_name'].str.title()
     
     # table settings
-    df_display = df_temp.sort_values(by='full_name')
+    df_display = df_merged.sort_values(by='full_name')
     gb = GridOptionsBuilder.from_dataframe(df_display)
     gb.configure_selection('multiple', use_checkbox=True, groupSelectsChildren="Group checkbox select children") #Enable multi-row selection
     gridOptions = gb.build()
