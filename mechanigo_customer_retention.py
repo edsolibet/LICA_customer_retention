@@ -12,6 +12,7 @@ import re, string, math
 from datetime import datetime
 #import plotly.graph_objects as go
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from lifetimes.fitters.pareto_nbd_fitter import ParetoNBDFitter
 from lifetimes.plotting import plot_probability_alive_matrix
 from lifetimes import GammaGammaFitter
@@ -287,6 +288,55 @@ def customer_lv(df_retention):
     st.pyplot(fig)
     return customer_lv
 
+def customer_lv_(df_retention):
+    '''
+    Calculates customer lifetime value
+
+    Parameters
+    ----------
+    df_retention : dataframe
+        Cohort rfm data
+
+    Returns
+    -------
+    customer_lv : dataframe
+        Customer lifetime value and its components
+
+    '''
+    
+    monthly_clv, avg_sales, purchase_freq, churn = list(), list(), list(), list()
+
+    # calculate monthly customer lifetime value per cohort
+    for d in sorted(df_retention['cohort'].unique()):
+      customer_m = df_retention[df_retention['cohort']==d]
+      avg_sales.append(round(np.mean(customer_m['avg_sales']), 2))
+      purchase_freq.append(round(np.mean(customer_m['frequency']), 2))
+      retention_rate = customer_m[customer_m['frequency']>0].shape[0]/customer_m.shape[0]
+      churn.append(round(1-retention_rate,2))
+      clv = round((avg_sales[-1]*purchase_freq[-1]/churn[-1]), 2)
+      monthly_clv.append(clv)
+    
+    customer_lv = pd.DataFrame({'cohort':sorted(df_retention['cohort'].unique()), 'clv':monthly_clv, 
+                                 'avg_sales': avg_sales, 'purchase_freq': purchase_freq,
+                                 'churn': churn})
+    
+    cohorts = sorted(customer_lv.cohort.unique())
+    data = [customer_lv.clv, customer_lv.churn, customer_lv.avg_sales, 
+            customer_lv.purchase_freq]
+    y_labels = ['CLV', 'Churn %', 'Avg Sales', 'Purchase Freq.']
+    
+    fig = make_subplots(rows=len(data), cols=1, 
+                        shared_xaxes=True, vertical_spacing=0.02)
+    
+    for i, col in enumerate(data, start=1):
+        fig.add_trace(go.Scatter(x=cohorts, y=data[i-1],
+                                 line = dict(width=4, dash='dash')),
+                         row=i, col=1)
+        fig.update_yaxes(title_text = y_labels[i-1], row=i, col=1)
+
+    fig.update_layout(title_text = 'Cohort CLV characteristics')
+    fig.show()
+
 #@st.experimental_memo(suppress_st_warning=True)
 def bar_plot(df_retention, option = 'Inter-transaction time (ITT)'):
     '''
@@ -306,8 +356,7 @@ def bar_plot(df_retention, option = 'Inter-transaction time (ITT)'):
               'Predicted No. of Transactions': 'expected_purchases',
               'Predicted Sales': 'pred_sales',
               'Active Probability': 'prob_active'}
-    #fig, ax1 = plt.subplots()
-    # ax1.hist([a.values, b.values], bins=bins, label=['Single', 'Multiple'])
+    
     bins = st.slider('Bins: ', 5, 50, 
                      value=25,
                      step=5)
@@ -331,13 +380,6 @@ def bar_plot(df_retention, option = 'Inter-transaction time (ITT)'):
                       title_text='{} by returning customers'.format(option))
     fig.update_traces(opacity=0.6)
     st.plotly_chart(fig, use_container_width=True)
-    
-    #plt.xlabel(x_lab[option], fontsize=12)
-    #plt.ylabel('Number of customers', fontsize=12)
-    #plt.title('{} by returning customers'.format(option), fontsize=14);
-    #plt.legend()
-    #plt.tight_layout()
-    #st.pyplot(fig)
 
 @st.experimental_singleton(suppress_st_warning=True)
 def fit_models(df_retention):
@@ -388,7 +430,7 @@ def update_retention(_pnbd, _ggf, t, df_retention):
             x['expected_purchases'] * x['avg_sales'], axis=1)
     return df_retention.round(3)
         
-
+@st.experimental_memo(suppress_st_warning=True)
 def search_for_name_retention(name, df_retention):
     '''
     Function to search for customer names in backend data
@@ -447,7 +489,7 @@ def customer_search(df_data, df_retention):
         fit_columns_on_grid_load=False,
         theme='blue', #Add theme color to the table
         enable_enterprise_modules=True,
-        height=200, 
+        height=500, 
         reload_data=False)
     
     selected = data_selection['selected_rows']
@@ -544,7 +586,7 @@ if __name__ == '__main__':
              These plots show the CLV for each cohort and how the trend of each 
              of its components (frequency, average total sales, churn%) vary.
              ''')
-    clv = customer_lv(df_retention)
+    clv = customer_lv_(df_retention)
     
     
     
