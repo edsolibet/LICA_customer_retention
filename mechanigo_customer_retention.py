@@ -456,7 +456,8 @@ def customer_search(df_data, df_retention):
         df_list_retention = [search_for_name_retention(selected[checked_items]['full_name'], df_retention) 
                              for checked_items in range(len(selected))]
         
-        st.dataframe(pd.concat(df_list_retention))
+        df_list_retention = pd.concat(df_list_retention)
+        st.dataframe(df_list_retention)
 
     else:
         st.write('Click on an entry in the table to display customer data.')
