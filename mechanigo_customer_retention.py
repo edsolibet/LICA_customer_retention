@@ -323,7 +323,7 @@ def customer_lv_(df_retention):
     cohorts = sorted(customer_lv.cohort.unique())
     data = [customer_lv.clv, customer_lv.churn, customer_lv.avg_sales, 
             customer_lv.purchase_freq]
-    y_labels = ['CLV', 'Churn %', 'Avg Sales', 'Purchase Freq.']
+    y_labels = ['CLV (Php)', 'Churn %', 'Avg Sales (Php)', 'Purchase Freq.']
     
     fig = make_subplots(rows=len(data), cols=1, 
                         shared_xaxes=True, vertical_spacing=0.02)
