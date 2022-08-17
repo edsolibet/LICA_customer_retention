@@ -303,8 +303,8 @@ def bar_plot(df_retention, option = 'Inter-transaction time (ITT)'):
     '''
     choice = {'Inter-transaction time (ITT)': 'ITT',
               'Average Sales': 'avg_sales',
-              'Predicted Average Sale': 'pred_avg_sale',
-              'Predicted CLV': 'pred_clv',
+              'Predicted No. of Transactions': 'expected_purchases',
+              'Predicted Sales': 'pred_sales',
               'Active Probability': 'prob_active'}
     #fig, ax1 = plt.subplots()
     # ax1.hist([a.values, b.values], bins=bins, label=['Single', 'Multiple'])
@@ -321,8 +321,8 @@ def bar_plot(df_retention, option = 'Inter-transaction time (ITT)'):
     
     x_lab = {'Inter-transaction time (ITT)': 'Days',
              'Average Sales': 'Amount (Php)',
-             'Predicted Average Sale': 'Amount (Php)',
-             'Predicted CLV': 'Amount (Php)',
+             'Predicted No. of Transactions': 'Count',
+             'Predicted Sales': 'Amount (Php)',
              'Active Probability': '%'}
     
     fig.update_layout(barmode='overlay',
@@ -495,6 +495,18 @@ if __name__ == '__main__':
             """)
     df_retention = customer_search(df_data, df_retention, [pnbd, ggf])
     
+    # histogram plots customer info 
+    st.write('''
+             This bar plot shows the distribution of single/multiple repeat 
+             transaction(s) based on:
+             ''')
+    option = st.selectbox('Variable to show: ', 
+                          ('Inter-transaction time (ITT)', 'Average Sales', 
+                           'Predicted No. of Transactions',
+                           'Predicted Sales',
+                           'Active Probability'))
+    bar_plot(df_retention, option=option)
+    
     # plot_prob_active(pnbd)
     
     st.title('Cohort Analysis')
@@ -513,14 +525,5 @@ if __name__ == '__main__':
              ''')
     clv = customer_lv(df_retention)
     
-    # plots ITT
-    st.write('''
-             This bar plot shows the distribution of single/multiple repeat 
-             transaction(s) based on:
-             ''')
-    option = st.selectbox('Variable to show: ', 
-                          ('Inter-transaction time (ITT)', 'Average Sales', 
-                           'Predicted Average Sale', 'Predicted CLV',
-                           'Active Probability'))
-    bar_plot(df_retention, option=option)
+    
     
