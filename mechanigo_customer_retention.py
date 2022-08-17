@@ -335,7 +335,7 @@ def customer_lv_(df_retention):
         fig.update_yaxes(title_text = y_labels[i-1], row=i, col=1)
 
     fig.update_layout(title_text = 'Cohort CLV characteristics')
-    fig.show()
+    st.plotly_chart(fig)
 
 #@st.experimental_memo(suppress_st_warning=True)
 def bar_plot(df_retention, option = 'Inter-transaction time (ITT)'):
