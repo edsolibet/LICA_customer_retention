@@ -338,8 +338,7 @@ def customer_lv_(df_retention):
 
     fig.update_layout(title_text = 'Cohort CLV characteristics',
                      height = 1200,
-                     width = 900,
-                     plot_bgcolor='#FFFFFF')
+                     width = 600)
     st.plotly_chart(fig)
 
 #@st.experimental_memo(suppress_st_warning=True)
