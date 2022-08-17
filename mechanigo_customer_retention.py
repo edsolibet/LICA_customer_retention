@@ -434,6 +434,7 @@ def customer_search(df_data, df_retention):
     df_display = df_merged.sort_values(by='full_name')
     gb = GridOptionsBuilder.from_dataframe(df_display)
     gb.configure_selection('multiple', use_checkbox=True, groupSelectsChildren="Group checkbox select children") #Enable multi-row selection
+    gb.configure_column('full_name', headerCheckboxSelection = True)
     gridOptions = gb.build()
     
     # selection settings
@@ -442,7 +443,8 @@ def customer_search(df_data, df_retention):
         gridOptions=gridOptions,
         data_return_mode='AS_INPUT', 
         update_mode='MODEL_CHANGED', 
-        fit_columns_on_grid_load=True,
+        autoSizeColumn = 'full_name',
+        fit_columns_on_grid_load=False,
         theme='blue', #Add theme color to the table
         enable_enterprise_modules=True,
         height=200, 
@@ -457,10 +459,7 @@ def customer_search(df_data, df_retention):
                              for checked_items in range(len(selected))]
         
         df_list_retention = pd.concat(df_list_retention)
-        st.dataframe(df_list_retention)
-        
-        if st.button('Deselect all'):
-            gridOptions.api.deselectAll()
+        st.dataframe(df_list_retention)          
 
     else:
         st.write('Click on an entry in the table to display customer data.')
