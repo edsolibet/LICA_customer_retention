@@ -423,8 +423,8 @@ def customer_search(df_data, df_retention):
     # Reprocess dataframe entries to be displayed
     df_temp = df_data.reset_index()[['full_name', 'email']].drop_duplicates(subset=['full_name','email'], keep='first')
     
-    df_temp_ret = df_retention.reset_index()['full_name', 'prob_active', 'expected_purchases', 
-                                     'avg_sales', 'pred_sales', 'last_txn', 'ITT', 'total_sales', 'cohort']
+    df_temp_ret = df_retention.reset_index()[['full_name', 'prob_active', 'expected_purchases', 
+                                     'avg_sales', 'pred_sales', 'last_txn', 'ITT', 'total_sales', 'cohort']]
     
     df_merged = pd.merge(df_temp, df_temp_ret, how='left', left_on='full_name', right_on='full_name')
     # Capitalize first letter of each name
@@ -452,7 +452,6 @@ def customer_search(df_data, df_retention):
     
     if selected:           
         # row/s are selected
-        df_list_retention = list()
         
         df_list_retention = [search_for_name_retention(selected[checked_items]['full_name'], df_retention) 
                              for checked_items in range(len(selected))]
@@ -461,8 +460,14 @@ def customer_search(df_data, df_retention):
 
     else:
         st.write('Click on an entry in the table to display customer data.')
+        df_list_retention = pd.DataFrame()
         
     return df_list_retention
+
+@st.experimental_memo
+def convert_csv(df):
+    # IMPORTANT: Cache the conversion to prevent recomputation on every rerun.
+    return df.to_csv().encode('utf-8')
 
 if __name__ == '__main__':
     st.title('MechaniGO.ph Customer Retention')
@@ -486,7 +491,15 @@ if __name__ == '__main__':
             Filter the name/email on the dropdown menu as you hover on the column names. 
             Click on the entry to display data below. 
             """)
-    df_list_retention = customer_search(df_data, df_retention)
+    customer_retention_list = customer_search(df_data, df_retention)
+    
+    if len(customer_retention_list):
+        st.download_button(
+            label ="Download customer data",
+            data = convert_csv(customer_retention_list),
+            file_name = "customer_retention.csv",
+            key='download-retention-csv'
+            )
     
     st.markdown('''
                 Variable meanings: \n
