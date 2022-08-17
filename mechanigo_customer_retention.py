@@ -400,10 +400,10 @@ def search_for_name_retention(name, df_retention):
     names_retention = df_retention[df_retention.apply(lambda x: name.lower() in x['full_name'], axis=1)]
     df_temp_retention = names_retention[['full_name', 'prob_active', 'expected_purchases', 'avg_sales', 'pred_sales',
                                          'last_txn', 'ITT', 'total_sales', 'cohort']]
-    df_temp_retention['full_name'] = df_temp_retention['full_name'].str.title()
+    df_temp_retention.loc[:, 'full_name'] = df_temp_retention.loc[:, 'full_name'].str.title()
     return df_temp_retention.set_index('full_name')
 
-def customer_search(df_data, df_retention, _models):
+def customer_search(df_data, df_retention):
     '''
     Displays retention info of selected customers.
 
@@ -421,7 +421,8 @@ def customer_search(df_data, df_retention, _models):
 
     '''
     # Reprocess dataframe entries to be displayed
-    df_temp = df_data.reset_index()[['full_name','email']].drop_duplicates(subset=['full_name','email'], keep='first')
+    df_temp = df_data.reset_index()[['full_name', 'email', 'prob_active', 'expected_purchases', 
+                                     'avg_sales', 'pred_sales', 'last_txn', 'ITT', 'total_sales', 'cohort']].drop_duplicates(subset=['full_name','email'], keep='first')
     # Capitalize first letter of each name
     df_temp.loc[:, 'full_name'] = df_temp.loc[:, 'full_name'].str.title()
     
@@ -448,35 +449,16 @@ def customer_search(df_data, df_retention, _models):
     if selected:           
         # row/s are selected
         df_list_retention = list()
-        time = st.slider('Probability up to what time in days:', 15, 60, 
-                     value=30,
-                     step=15)
-        
-        # update df_retention from time slider value
-        pnbd, ggf = _models
-        df_retention = update_retention(pnbd, ggf, time, df_retention)
         
         df_list_retention = [search_for_name_retention(selected[checked_items]['full_name'], df_retention) 
                              for checked_items in range(len(selected))]
-        
-        st.markdown('''
-                    Variable meanings: \n
-                    \n    
-                    - **total/avg_sales**: Total/Average sales of each customer transaction. \n
-                    - **ITT**: Inter-transaction time (average time between transactions). \n
-                    - **last_txn**: Days since last transaction. \n
-                    - **prob_active**: Probability that customer will still make a transaction in the future. \n
-                    - **expected_purchases**: Predicted no. of purchases within time t. \n
-                    - **pred_sales**: Predicted customer sales within time t. \n
-                    - **cohort**: Year-month of first customer purchase
-                    ''')
         
         st.dataframe(pd.concat(df_list_retention))
 
     else:
         st.write('Click on an entry in the table to display customer data.')
         
-    return df_retention
+    return df_list_retention
 
 if __name__ == '__main__':
     st.title('MechaniGO.ph Customer Retention')
@@ -487,13 +469,32 @@ if __name__ == '__main__':
     
     # fit pareto/nbd and gamma gamma models
     pnbd, ggf = fit_models(df_retention)
+    
+    # adjust time window
+    time = st.slider('Future time window:', 15, 60, 
+                     value=30,
+                     step=15)
+    # update df_retention with pareto results
+    df_retention = update_retention(pnbd, ggf, time, df_retention)
    
     st.markdown("""
             This app searches for the **name** or **email** you select on the table.\n
             Filter the name/email on the dropdown menu as you hover on the column names. 
             Click on the entry to display data below. 
             """)
-    df_retention = customer_search(df_data, df_retention, [pnbd, ggf])
+    df_list_retention = customer_search(df_data, df_retention)
+    
+    st.markdown('''
+                Variable meanings: \n
+                \n    
+                - **total/avg_sales**: Total/Average sales of each customer transaction. \n
+                - **ITT**: Inter-transaction time (average time between transactions). \n
+                - **last_txn**: Days since last transaction. \n
+                - **prob_active**: Probability that customer will still make a transaction in the future. \n
+                - **expected_purchases**: Predicted no. of purchases within time t. \n
+                - **pred_sales**: Predicted customer sales within time t. \n
+                - **cohort**: Year-month of first customer purchase
+                ''')
     
     # histogram plots customer info 
     st.write('''
