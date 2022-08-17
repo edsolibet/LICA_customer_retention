@@ -365,8 +365,8 @@ def bar_plot(df_retention, option = 'Inter-transaction time (ITT)'):
     b = df_retention[df_retention['frequency'] > 1][choice[option]]
     
     fig = go.Figure()
-    fig.add_trace(go.Histogram(x = a, nbinsx=bins))
-    fig.add_trace(go.Histogram(x = b, nbinsy=bins))
+    fig.add_trace(go.Histogram(x = a, nbinsx=bins, name='Single Repeat'))
+    fig.add_trace(go.Histogram(x = b, nbinsy=bins, name='Multiple Repeat'))
     
     x_lab = {'Inter-transaction time (ITT)': 'Days',
              'Average Sales': 'Amount (Php)',
