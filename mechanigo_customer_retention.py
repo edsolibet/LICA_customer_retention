@@ -331,14 +331,14 @@ def customer_lv_(df_retention):
     for i, col in enumerate(data, start=1):
         fig.add_trace(go.Scatter(x=cohorts, y=data[i-1],
                                  line = dict(width=4, dash='dash'),
-                                 name=y_labels[i-1]),
+                                 name=data[i-1]),
                          row=i, col=1)
         fig.update_yaxes(title_text = y_labels[i-1], row=i, col=1)
     fig.update_xaxes(type='category')
 
     fig.update_layout(title_text = 'Cohort CLV characteristics',
-                     height = 1200,
-                     width = 800)
+                      height = 1200,
+                      width = 800)
     st.plotly_chart(fig)
 
 #@st.experimental_memo(suppress_st_warning=True)
@@ -501,7 +501,7 @@ def customer_search(df_data, df_retention):
     if selected:           
         # row/s are selected
         
-        df_list_retention = [search_for_name_retention(selected[checked_items]['full_name'], df_retention) 
+        df_list_retention = [search_for_name_retention(selected[checked_items]['full_name'], df_merged) 
                              for checked_items in range(len(selected))]
         
         df_list_retention = pd.concat(df_list_retention)
