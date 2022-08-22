@@ -331,7 +331,7 @@ def customer_lv_(df_retention):
     for i, col in enumerate(data, start=1):
         fig.add_trace(go.Scatter(x=cohorts, y=data[i-1],
                                  line = dict(width=4, dash='dash'),
-                                 name=data[i-1]),
+                                 name= y_labels[i-1]),
                          row=i, col=1)
         fig.update_yaxes(title_text = y_labels[i-1], row=i, col=1)
     fig.update_xaxes(type='category')
