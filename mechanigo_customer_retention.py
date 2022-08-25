@@ -456,6 +456,13 @@ def convert_csv(df):
     # IMPORTANT: Cache the conversion to prevent recomputation on every rerun.
     return df.to_csv().encode('utf-8')
 
+def last_update_date():
+    return datetime.today().strftime('%Y-%m-%d')
+
+def update():
+    st.experimental_memo.clear()
+    st.experimental_rerun()
+
 if __name__ == '__main__':
     st.title('MechaniGO.ph Customer Retention')
     # import data and preparation
@@ -530,5 +537,19 @@ if __name__ == '__main__':
              ''')
     clv = customer_lv_(df_retention)
     
+    # initialize session_state.last_update dictionary
+    if 'last_update' not in st.session_state:
+        st.session_state['last_update'] = {datetime.today().strftime('%Y-%m-%d') : customer_retention_list}
+    
+    st.info('Last updated: {}'.format(sorted(st.session_state.last_update.keys())[-1]))
+    
+    st.warning('''
+                If you need to update the lists, the button below will clear the
+                cache and rerun the app.
+                ''')
+                
+    if st.button('Update'):
+      
+        update()
     
     
