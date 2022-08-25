@@ -208,7 +208,7 @@ def cohort_rfm(df):
                                        T = ('date', lambda x: (datetime.today()-x.min()).days + 1),
                                        year=('date', lambda x: x.min().year),
                                        month=('date', lambda x: x.min().month),
-                                       month_diff=('date', lambda x: ((datetime.today() - x.max())/np.timedelta64(1, 'M')).astype(int))
+                                       month_diff=('date', lambda x: int((datetime.today() - x.max())/np.timedelta64(1, 'M')))
                                        )
     df_retention.columns = ['cohort', 'recency', 'frequency', 'total_sales', 
                          'avg_sales', 'T', 'year', 'month', 'month_diff']
