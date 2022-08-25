@@ -114,7 +114,7 @@ def get_data():
     drop_subset = ['full_name', 'brand', 'model', 'appointment_date','customer_id']
     all_data_ = all_data[cols].drop_duplicates(subset=drop_subset, keep='first')
     # combine "service name" of entries with same transaction id
-    temp = all_data.fillna('').groupby(['id','full_name'])['service_name'].apply(lambda x: fix_name(', '.join(x).lower())).sort_index(ascending=False).reset_index()
+    temp = all_data.fillna('').groupby(['id','full_name', 'model'])['service_name'].apply(lambda x: ', '.join(x).lower()).sort_index(ascending=False).reset_index()
     # merge dataframes
     df_data = all_data_.merge(temp, left_on=['id', 'full_name'], right_on=['id','full_name'])
     # convert date to datetime
@@ -378,7 +378,7 @@ def search_for_name_retention(name, df_retention):
     # search row with name
     names_retention = df_retention[df_retention.apply(lambda x: name.lower() in x['full_name'], axis=1)]
     df_temp_retention = names_retention[['full_name', 'phone', 'brand', 'model', 'address', 'prob_active', 'expected_purchases', 
-                                         'avg_sales', 'pred_sales', 'last_txn', 'month_diff', 'ITT', 'total_sales', 'cohort']]
+                         Built-in mut                'avg_sales', 'pred_sales', 'last_txn', 'month_diff', 'ITT', 'total_sales', 'cohort']]
     df_temp_retention.loc[:, 'full_name'] = df_temp_retention.loc[:, 'full_name'].str.title()
     # round off all columns except cohort
     round_cols = ['prob_active', 'expected_purchases','avg_sales', 'pred_sales', 'last_txn', 'ITT', 'total_sales']
