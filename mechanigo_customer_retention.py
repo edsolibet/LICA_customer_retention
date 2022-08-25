@@ -208,9 +208,10 @@ def cohort_rfm(df):
                                        T = ('date', lambda x: (datetime.today()-x.min()).days + 1),
                                        year=('date', lambda x: x.min().year),
                                        month=('date', lambda x: x.min().month),
+                                       month_diff=('date', lambda x: ((datetime.today() - x.max())/np.timedelta64(1, 'M')).astype(int))
                                        )
     df_retention.columns = ['cohort', 'recency', 'frequency', 'total_sales', 
-                         'avg_sales', 'T', 'year', 'month']
+                         'avg_sales', 'T', 'year', 'month', 'month_diff']
     df_retention.loc[:,'ITT'] = df_retention.apply(lambda row: round(get_ratio(row['recency'], row['frequency']), 2), axis=1)
     df_retention.loc[:, 'last_txn'] = df_retention.apply(lambda x: int(x['T'] - x['recency']), axis=1)
     df_retention = df_retention.fillna(0)
@@ -219,74 +220,6 @@ def cohort_rfm(df):
     
     return df_retention
 
-#@st.experimental_memo(suppress_st_warning=True)
-def customer_lv(df_retention):
-    '''
-    Calculates customer lifetime value
-
-    Parameters
-    ----------
-    df_retention : dataframe
-        Cohort rfm data
-
-    Returns
-    -------
-    customer_lv : dataframe
-        Customer lifetime value and its components
-
-    '''
-    
-    monthly_clv, avg_sales, purchase_freq, churn = list(), list(), list(), list()
-
-    # calculate monthly customer lifetime value per cohort
-    for d in sorted(df_retention['cohort'].unique()):
-      customer_m = df_retention[df_retention['cohort']==d]
-      avg_sales.append(round(np.mean(customer_m['avg_sales']), 2))
-      purchase_freq.append(round(np.mean(customer_m['frequency']), 2))
-      retention_rate = customer_m[customer_m['frequency']>0].shape[0]/customer_m.shape[0]
-      churn.append(round(1-retention_rate,2))
-      clv = round((avg_sales[-1]*purchase_freq[-1]/churn[-1]), 2)
-      monthly_clv.append(clv)
-    
-    customer_lv = pd.DataFrame({'cohort':sorted(df_retention['cohort'].unique()), 'clv':monthly_clv, 
-                                 'avg_sales': avg_sales, 'purchase_freq': purchase_freq,
-                                 'churn': churn})
-    # plot monthly clv
-    colors = [['dodgerblue', 'red'],['green', 'orange']]
-    customer_lv_ = customer_lv.iloc[:,:]
-    
-    fig, ax1 = plt.subplots(2,1, figsize=(12, 10))
-    ax1[0].plot(range(len(customer_lv_.cohort)), customer_lv_.clv, '--o', color=colors[0][0]);
-    ax1[0].set_ylim([0, round(customer_lv.clv.max()*1.2)])
-    ax1[0].set_ylabel('customer clv', color=colors[0][0])
-    ax1[0].axhline(y=customer_lv_.clv.mean(), color='black', linestyle='--');
-    plt.title('Cohort Lifetime Value', fontsize=14);
-    # set secondary y-axis
-    ax2 = ax1[0].twinx()
-    ax2.plot(range(len(customer_lv_.cohort)), customer_lv_.churn, '--o', color=colors[0][1])
-    ax2.set_ylim([0.5, 1])
-    ax2.set_ylabel('churn %', color=colors[0][1], fontsize=12)
-    # set shared x-label and x-ticks
-    ax2.set_xticks(range(len(customer_lv_.cohort)))
-    ax2.set_xticklabels(customer_lv_.cohort)
-    ax2.set_xlabel('first_cohort', fontsize=12);
-    
-    ax1[1].plot(range(len(customer_lv_.cohort)), customer_lv_.avg_sales, '--o', color=colors[1][0]);
-    #ax1[1].set_ylim([0, round(customer_clv.clv.max()*1.2)])
-    ax1[1].set_ylabel('avg sales', color=colors[1][0], fontsize=12)
-    # set secondary y-axis
-    ax2 = ax1[1].twinx()
-    ax2.plot(range(len(customer_lv_.cohort)), customer_lv_.purchase_freq, '--o', color=colors[1][1])
-    #ax2.set_ylim([0.5, 1])
-    ax2.set_ylabel('purchase freq', color=colors[1][1], fontsize=12)
-    # set shared x-label and x-ticks
-    ax2.set_xticks(range(len(customer_lv_.cohort)))
-    ax2.set_xticklabels(customer_lv_.cohort)
-    fig.autofmt_xdate(rotation=90, ha='right')
-    ax2.set_xlabel('first_cohort', fontsize=12);
-    
-    st.pyplot(fig)
-    return customer_lv
 
 def customer_lv_(df_retention):
     '''
@@ -445,7 +378,7 @@ def search_for_name_retention(name, df_retention):
     # search row with name
     names_retention = df_retention[df_retention.apply(lambda x: name.lower() in x['full_name'], axis=1)]
     df_temp_retention = names_retention[['full_name', 'phone', 'brand', 'model', 'address', 'prob_active', 'expected_purchases', 
-                                         'avg_sales', 'pred_sales', 'last_txn', 'ITT', 'total_sales', 'cohort']]
+                                         'avg_sales', 'pred_sales', 'last_txn', 'month_diff', 'ITT', 'total_sales', 'cohort']]
     df_temp_retention.loc[:, 'full_name'] = df_temp_retention.loc[:, 'full_name'].str.title()
     # round off all columns except cohort
     round_cols = ['prob_active', 'expected_purchases','avg_sales', 'pred_sales', 'last_txn', 'ITT', 'total_sales']
@@ -475,7 +408,7 @@ def customer_search(df_data, df_retention):
     df_temp = df_data.reset_index().drop_duplicates(subset=['full_name', 'brand', 'model'], keep='first')[['full_name', 'phone', 'brand', 'model', 'address']]
     
     df_temp_ret = df_retention.reset_index()[['full_name', 'prob_active', 'expected_purchases', 
-                                     'avg_sales', 'pred_sales', 'last_txn', 'ITT', 'total_sales', 'cohort']]
+                                     'avg_sales', 'pred_sales', 'last_txn', 'month_diff', 'ITT', 'total_sales', 'cohort']]
     
     df_merged = pd.merge(df_temp, df_temp_ret, how='left', left_on='full_name', right_on='full_name')
     # Capitalize first letter of each name
