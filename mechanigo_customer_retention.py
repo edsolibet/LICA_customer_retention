@@ -447,11 +447,11 @@ def search_for_name_retention(name, df_retention):
     df_temp_retention = names_retention[['full_name', 'phone', 'brand', 'model', 'address', 'prob_active', 'expected_purchases', 
                                          'avg_sales', 'pred_sales', 'last_txn', 'ITT', 'total_sales', 'cohort']]
     df_temp_retention.loc[:, 'full_name'] = df_temp_retention.loc[:, 'full_name'].str.title()
-    df_temp_retention = df_temp_retention.set_index('full_name')
     # round off all columns except cohort
     round_cols = ['full_name', 'phone', 'brand', 'model', 'address', 'prob_active', 'expected_purchases', 
                                          'avg_sales', 'pred_sales', 'last_txn', 'ITT', 'total_sales']
     df_temp_retention.loc[:, round_cols] = df_temp_retention.loc[:, round_cols].round(3)
+    df_temp_retention = df_temp_retention.set_index('full_name')
     return df_temp_retention
 
 def customer_search(df_data, df_retention):
