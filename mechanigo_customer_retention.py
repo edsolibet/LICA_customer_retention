@@ -114,7 +114,7 @@ def get_data():
     drop_subset = ['full_name', 'brand', 'model', 'appointment_date','customer_id']
     all_data_ = all_data[cols].drop_duplicates(subset=drop_subset, keep='first')
     # combine "service name" of entries with same transaction id
-    temp = all_data.fillna('').groupby(['id','full_name', 'model'])['service_name'].apply(lambda x: ', '.join(x).lower()).sort_index(ascending=False).reset_index()
+    temp = all_data.fillna('').groupby(['id','full_name'])['service_name'].apply(lambda x: ', '.join(x).lower()).sort_index(ascending=False).reset_index()
     # merge dataframes
     df_data = all_data_.merge(temp, left_on=['id', 'full_name'], right_on=['id','full_name'])
     # convert date to datetime
