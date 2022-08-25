@@ -405,7 +405,7 @@ def customer_search(df_data, df_retention):
 
     '''
     # Reprocess dataframe entries to be displayed
-    df_temp = df_data.reset_index().drop_duplicates(subset=['full_name', 'brand', 'model'], keep='first')[['full_name', 'phone', 'brand', 'model', 'address']]
+    df_temp = df_data.reset_index()[['full_name', 'phone', 'brand', 'model', 'address']].drop_duplicates(subset=['full_name', 'model', 'brand'], keep='first')
     
     df_temp_ret = df_retention.reset_index()[['full_name', 'prob_active', 'expected_purchases', 
                                      'avg_sales', 'pred_sales', 'last_txn', 'month_diff', 'ITT', 'total_sales', 'cohort']]
