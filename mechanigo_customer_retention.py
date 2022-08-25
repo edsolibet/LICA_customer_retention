@@ -383,7 +383,7 @@ def search_for_name_retention(name, df_retention):
     # round off all columns except cohort
     round_cols = ['prob_active', 'expected_purchases','avg_sales', 'pred_sales', 'last_txn', 'ITT', 'total_sales']
     df_temp_retention.loc[:, round_cols] = df_temp_retention.loc[:, round_cols].round(3)
-    df_temp_retention.loc[:, 'cohort'] = df_temp_retention.loc[:, 'cohort'].astype(int)
+    df_temp_retention.loc[:, 'cohort'] = df_temp_retention.loc[:, 'cohort'].apply(int)
     df_temp_retention = df_temp_retention.set_index('full_name')
     return df_temp_retention
 
