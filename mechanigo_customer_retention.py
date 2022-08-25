@@ -415,7 +415,7 @@ def customer_search(df_data, df_retention):
     df_merged.loc[:, 'full_name'] = df_merged.loc[:, 'full_name'].str.title()
     
     # table settings
-    df_display = df_merged.sort_values(by='full_name').set_index('full_name')
+    df_display = df_merged.sort_values(by='full_name')
     gb = GridOptionsBuilder.from_dataframe(df_display)
     gb.configure_selection('multiple', use_checkbox=True, groupSelectsChildren="Group checkbox select children") #Enable multi-row selection
     gb.configure_column('full_name', headerCheckboxSelection = True)
