@@ -444,7 +444,7 @@ def search_for_name_retention(name, df_retention):
     df_retention.loc[:,'full_name'] = df_retention.apply(lambda x: x['full_name'].lower(), axis=1)
     # search row with name
     names_retention = df_retention[df_retention.apply(lambda x: name.lower() in x['full_name'], axis=1)]
-    df_temp_retention = names_retention[['full_name', 'prob_active', 'expected_purchases', 'avg_sales', 'pred_sales',
+    df_temp_retention = names_retention[['full_name', 'phone', 'brand', 'model', 'address', 'prob_active', 'expected_purchases', 'avg_sales', 'pred_sales',
                                          'last_txn', 'ITT', 'total_sales', 'cohort']]
     df_temp_retention.loc[:, 'full_name'] = df_temp_retention.loc[:, 'full_name'].str.title()
     return df_temp_retention.set_index('full_name').round(3)
@@ -467,7 +467,7 @@ def customer_search(df_data, df_retention):
 
     '''
     # Reprocess dataframe entries to be displayed
-    df_temp = df_data.reset_index()[['full_name', 'phone', 'brand', 'model', 'address']].drop_duplicates(subset=['full_name', 'brand', 'model'], keep='first')
+    df_temp = df_data.reset_index().drop_duplicates(subset=['full_name', 'brand', 'model'], keep='first')[['full_name', 'phone', 'brand', 'model', 'address']]
     
     df_temp_ret = df_retention.reset_index()[['full_name', 'prob_active', 'expected_purchases', 
                                      'avg_sales', 'pred_sales', 'last_txn', 'ITT', 'total_sales', 'cohort']]
@@ -493,7 +493,7 @@ def customer_search(df_data, df_retention):
         fit_columns_on_grid_load=False,
         theme='blue', #Add theme color to the table
         enable_enterprise_modules=True,
-        height=500, 
+        height=400, 
         reload_data=False)
     
     selected = data_selection['selected_rows']
