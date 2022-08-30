@@ -69,6 +69,23 @@ def fix_name(name):
         continue
   return ' '.join(name_list).strip()
 
+def fix_phone_num(phone):
+    '''
+    Cleanup phone numbers
+    
+    Parameters
+    ----------
+    phone : string
+    
+    Returns:
+    phone : string
+    '''
+    phone = ''.join(phone.split(' '))
+    phone = ''.join(phone.split('-'))
+    phone = re.sub('^\+63', '0', phone)
+    phone = '0' + phone if phone[0] == '9' else phone
+    return phone
+
 def get_ratio(a, b):
   return a/b if b else 999
 
@@ -481,7 +498,7 @@ if __name__ == '__main__':
     df_retention = update_retention(pnbd, ggf, time, df_retention)
    
     st.markdown("""
-            This app searches for the **name** or **email** you select on the table.\n
+            This app searches for the **name** or **phone* you select on the table.\n
             Filter the name/email on the dropdown menu as you hover on the column names. 
             Click on the entry to display data below. 
             """)
