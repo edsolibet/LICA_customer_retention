@@ -121,6 +121,7 @@ def get_data():
     all_data.loc[:,'full_name'] = all_data.apply(lambda x: fix_name(x['full_name']), axis=1)
     all_data.loc[:, 'model/year'] = all_data.loc[:, 'model'].str.upper() + '/' + all_data.loc[:, 'model_year']
     all_data.loc[:, 'plate_number'] = all_data.plate_number.fillna('0000000').apply(lambda x: x[:3].upper() + x[3:].strip())
+    all_data.loc[:, 'phone'] = all_data.phone.apply(fix_phone_num)
     
     # desired columns
     cols = ['id', 'date', 'email','full_name','brand', 'model', 'model_year', 
