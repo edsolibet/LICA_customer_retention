@@ -371,7 +371,7 @@ def plot_prob_active(_pnbd):
 def update_retention(_pnbd, _ggf, t, df_retention):
     # calculate probability of active
     df_retention.loc[:,'prob_active'] = df_retention.apply(lambda x: 
-           _pnbd.conditional_probability_alive(x['frequency'], x['recency'], x['T']), 1)
+           _pnbd.conditional_probability_alive(x['frequency'], x['recency'], x['T'])*100, 1)
     df_retention.loc[:, 'expected_purchases'] = df_retention.apply(lambda x: 
             _pnbd.conditional_expected_number_of_purchases_up_to_time(t, x['frequency'], x['recency'], x['T']),1)
     df_retention.loc[:, 'prob_1_purchase'] = df_retention.apply(lambda x: 
@@ -383,7 +383,10 @@ def update_retention(_pnbd, _ggf, t, df_retention):
     # calculated clv for time t
     df_retention.loc[:,'pred_sales'] = df_retention.apply(lambda x: 
             x['expected_purchases'] * x['avg_sales'], axis=1)
-    return df_retention.round(3)
+    # round off all columns except cohort
+    round_cols = ['prob_active', 'expected_purchases','prob_1_purchase', 'pred_avg_sales', 'pred_sales', 'last_txn', 'ITT', 'total_sales']
+    df_retention.loc[:, round_cols] = df_retention.loc[:, round_cols].round(3)
+    return df_retention
         
 @st.experimental_memo(suppress_st_warning=True)
 def search_for_name_retention(name, df_retention):
@@ -427,7 +430,15 @@ def customer_search(df_data, df_retention):
     
     df_temp_ret = df_retention.reset_index()[['full_name', 'prob_active', 'expected_purchases', 
                                      'avg_sales', 'pred_sales', 'last_txn', 'month_diff', 'ITT', 'total_sales', 'cohort']]
-    
+    df_temp_ret.rename(columns = {'expected_purchases': 'exp_num_purchases',
+                                  'prob_active': 'prob_active (%)',
+                                  'month_diff': 'month_diff (months)',
+                                  'ITT': 'ITT (days)',
+                                  'last_txn': 'last_txn (days)',
+                                  'avg_sales': 'avg_sales (PHP)',
+                                  'pred_sales': 'pred_sales (PHP)',
+                                  'total_sales': 'total_sales (PHP)'
+                                  })
     df_merged = pd.merge(df_temp, df_temp_ret, how='left', left_on='full_name', right_on='full_name')
     # Capitalize first letter of each name
     df_merged.loc[:, 'full_name'] = df_merged.loc[:, 'full_name'].str.title()
