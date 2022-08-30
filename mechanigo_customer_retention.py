@@ -447,7 +447,6 @@ def customer_search(df_data, df_retention):
         update_mode='MODEL_CHANGED', 
         autoSizeColumn = 'full_name',
         fit_columns_on_grid_load=False,
-        theme='blue', #Add theme color to the table
         enable_enterprise_modules=True,
         height=400, 
         reload_data=False)
