@@ -398,7 +398,7 @@ def search_for_name_retention(name, df_retention):
     df_retention.loc[:,'full_name'] = df_retention.apply(lambda x: x['full_name'].lower(), axis=1)
     # search row with name
     names_retention = df_retention[df_retention.apply(lambda x: name.lower() in x['full_name'], axis=1)]
-    df_temp_retention = names_retention[['full_name', 'phone', 'brand', 'model', 'address', 'prob_active (%)', 'exp_num_purchases', 
+    df_temp_retention = names_retention[['full_name', 'phone', 'brand', 'model', 'address', 'prob_active (%)', 'frequency', 'exp_num_purchases', 
                                          'avg_sales (PHP)', 'pred_sales (PHP)', 'last_txn (days)', 'month_diff (months)', 'ITT (days)', 'total_sales (PHP)', 'cohort']]
     df_temp_retention.loc[:, 'full_name'] = df_temp_retention.loc[:, 'full_name'].str.title()
     # round off all columns except cohort
@@ -428,7 +428,7 @@ def customer_search(df_data, df_retention):
     # Reprocess dataframe entries to be displayed
     df_temp = df_data.reset_index()[['full_name', 'phone', 'brand', 'model', 'address']].drop_duplicates(subset=['full_name', 'phone'], keep='first')
     
-    df_temp_ret = df_retention.reset_index()[['full_name', 'prob_active', 'expected_purchases', 
+    df_temp_ret = df_retention.reset_index()[['full_name', 'prob_active', 'frequency', 'expected_purchases', 
                                      'avg_sales', 'pred_sales', 'last_txn', 'month_diff', 'ITT', 'total_sales', 'cohort']]
 
     df_temp_ret = df_temp_ret.rename(columns = {'expected_purchases': 'exp_num_purchases',
@@ -530,6 +530,7 @@ if __name__ == '__main__':
                 \n    
                 - **total/avg_sales**: Total/Average sales of each customer transaction. \n
                 - **ITT**: Inter-transaction time (average time between transactions). \n
+                - **Frequency**: Number of repeat transactions of customer
                 - **last_txn**: Days since last transaction. \n
                 - **prob_active**: Probability that customer will still make a transaction in the future. \n
                 - **expected_purchases**: Predicted no. of purchases within time t. \n
