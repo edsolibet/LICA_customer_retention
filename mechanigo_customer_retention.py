@@ -95,6 +95,7 @@ def get_data():
     
     '''
     Import data from redash query
+    http://app.redash.licagroup.ph/queries/103/source#114
     Perform necessary data preparations
     
     Parameters
@@ -106,12 +107,16 @@ def get_data():
     df_data: dataframe
         
     '''
-
-    all_data = pd.read_csv("http://app.redash.licagroup.ph/api/queries/128/results.csv?api_key=KisyFBTEg3GfiTZbrly189LJAHjwAzFIW7l9UElB", parse_dates = ['date','appointment_date','date_confirmed','date_cancelled'])
+    
+    all_data = pd.read_csv("http://app.redash.licagroup.ph/api/queries/103/results.csv?api_key=QHb7Vxu8oKMyOVhf4bw7YtWRcuQfzvMS6YBSqgeM", parse_dates = ['date','appointment_date','date_confirmed','date_cancelled'])
     all_data.loc[:,'date'] = pd.to_datetime(all_data.loc[:,'date'])
     # rename columns
-    all_data = all_data.rename(columns={'year': 'model_year', 'name':'status'})
-    all_data.loc[:, 'model_year'] = all_data.loc[:,'model_year'].apply(lambda x: 'XX' if math.isnan(x) else str(int(x)))
+    all_data = all_data.rename(columns={'year': 'model_year', 
+                                        'name':'status',
+                                        'make': 'brand'})
+    # filter out non integer results in "model_year"
+    all_data = all_data[all_data.loc[:,'model_year'].apply(lambda x: 1 if re.match('\d+', str(x)) else 0) == 1]
+    all_data.loc[:, 'model_year'] = all_data.loc[:,'model_year'].apply(lambda x: 'XX' if math.isnan(float(x)) else str(int(x)))
     all_data.loc[:,'brand'] = all_data.apply(lambda x: '' if x.empty else fix_name(x['brand']).upper(), axis=1)
     all_data.loc[:,'model'] = all_data.apply(lambda x: '' if x.empty else fix_name(x['model']).upper(), axis=1)
 
@@ -127,12 +132,13 @@ def get_data():
     cols = ['id', 'date', 'email','full_name','brand', 'model', 'model_year', 
         'appointment_date', 'mechanic_name', 'sub_total', 'service_fee', 'total_cost', 
         'date_confirmed', 'status', 'status_of_payment','customer_id','fuel_type',
-        'transmission','plate_number', 'phone','address','mileage','model/year']
+        'transmission', 'plate_number', 'phone','address','mileage','model/year']
     # columns used for dropping duplicates
     drop_subset = ['full_name', 'brand', 'model', 'appointment_date','customer_id']
     all_data_ = all_data[cols].drop_duplicates(subset=drop_subset, keep='first')
     # combine "service name" of entries with same transaction id
-    temp = all_data.fillna('').groupby(['id','full_name'])['service_name'].apply(lambda x: ', '.join(x).lower()).sort_index(ascending=False).reset_index()
+    all_data.loc[:, 'service_name'] = all_data.loc[:, 'service_name'].fillna('')
+    temp = all_data.fillna('').groupby(['id','full_name'])['service_name'].apply(lambda x: ', '.join(x.strip()).upper()).sort_index(ascending=False).reset_index()
     # merge dataframes
     df_data = all_data_.merge(temp, left_on=['id', 'full_name'], right_on=['id','full_name'])
     # convert date to datetime
@@ -398,7 +404,7 @@ def search_for_name_retention(name, df_retention):
     df_retention.loc[:,'full_name'] = df_retention.apply(lambda x: x['full_name'].lower(), axis=1)
     # search row with name
     names_retention = df_retention[df_retention.apply(lambda x: name.lower() in x['full_name'], axis=1)]
-    df_temp_retention = names_retention[['full_name', 'phone', 'brand', 'model', 'address', 'prob_active (%)', 'frequency', 'exp_num_purchases', 
+    df_temp_retention = names_retention[['full_name', 'phone', 'brand', 'model', 'address', 'service_name', 'prob_active (%)', 'frequency', 'exp_num_purchases', 
                                          'avg_sales (PHP)', 'pred_sales (PHP)', 'last_txn (days)', 'month_diff (months)', 'ITT (days)', 'total_sales (PHP)', 'cohort']]
     df_temp_retention.loc[:, 'full_name'] = df_temp_retention.loc[:, 'full_name'].str.title()
     # round off all columns except cohort
@@ -426,7 +432,7 @@ def customer_search(df_data, df_retention):
 
     '''
     # Reprocess dataframe entries to be displayed
-    df_temp = df_data.reset_index()[['full_name', 'phone', 'brand', 'model', 'address']].drop_duplicates(subset=['full_name', 'phone'], keep='first')
+    df_temp = df_data.reset_index()[['full_name', 'phone', 'brand', 'model', 'address', 'service_name']].drop_duplicates(subset=['full_name', 'phone'], keep='first')
     
     df_temp_ret = df_retention.reset_index()[['full_name', 'prob_active', 'frequency', 'expected_purchases', 
                                      'avg_sales', 'pred_sales', 'last_txn', 'month_diff', 'ITT', 'total_sales', 'cohort']]
