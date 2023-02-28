@@ -367,7 +367,7 @@ def get_prior_services(x, df):
     services = ', '.join(df_temp.service_name.tolist())
     return services
 
-@st.experimental_memo(suppress_st_warning=True)
+@st.experimental_memo
 def get_data():
     
     '''
@@ -458,7 +458,7 @@ def get_data():
     return df_data
 
 
-@st.experimental_memo(suppress_st_warning=True)
+@st.experimental_memo
 def calc_retention_rate(filtered_df, date_range, rate_or_actual):
     '''
     Calculates retention rates for non-first acq cohorts
@@ -580,7 +580,7 @@ def plot_cohort_analysis(df, column_name, value, start_date, rate_or_actual):
     st.dataframe(filtered_df[['date', 'full_name', 'phone', 'lead_source', 'brand', 'model', 'model_year', 'mechanic_name', 'service_name', 'acq_date']])
 
     
-@st.experimental_memo(suppress_st_warning=True)
+@st.experimental_memo
 def cohort_rfm(df):
     '''
     
@@ -672,7 +672,7 @@ def customer_lv_(df_retention):
                       width = 800)
     st.plotly_chart(fig)
 
-#@st.experimental_memo(suppress_st_warning=True)
+#@st.experimental_memo
 def bar_plot(df_retention, option = 'Inter-transaction time (ITT)'):
     '''
     Plots inter-transaction time of returning customers
@@ -714,7 +714,7 @@ def bar_plot(df_retention, option = 'Inter-transaction time (ITT)'):
     fig.update_traces(opacity=0.6)
     st.plotly_chart(fig, use_container_width=True)
 
-@st.experimental_singleton(suppress_st_warning=True)
+@st.experimental_singleton
 def fit_models(df_retention):
     pnbd = ParetoNBDFitter(penalizer_coef=0.001)
     pnbd.fit(df_retention['frequency'], df_retention['recency'], df_retention['T'])
@@ -745,7 +745,7 @@ def plot_prob_active(_pnbd):
     plot_probability_alive_matrix(_pnbd)
     st.pyplot(fig)
 
-#@st.experimental_memo(suppress_st_warning=True)
+#@st.experimental_memo
 def update_retention(_pnbd, _ggf, t, df_retention):
     # calculate probability of active
     df_retention.loc[:,'prob_active'] = df_retention.apply(lambda x: 
@@ -768,7 +768,7 @@ def update_retention(_pnbd, _ggf, t, df_retention):
     
     return df_retention
         
-#@st.experimental_memo(suppress_st_warning=True)
+#@st.experimental_memo
 def search_for_name_retention(name, df_retention):
     '''
     Function to search for customer names in backend data
